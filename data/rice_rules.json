@@ -1,0 +1,363 @@
+{
+  "version": "1.0",
+  "institucion": "Corporación Educacional Terra di Bimbi",
+  "documento_base": "RICE 2026",
+  "descripcion": "Parámetros configurables del algoritmo de clasificación de anotaciones y cálculo de semáforo.",
+  "clasificacion": {
+    "umbrales": {
+      "leve": 1,
+      "grave": 3,
+      "gravisima": 5
+    },
+    "reglas_normativas": [
+      {
+        "id": "R1",
+        "nombre": "Reiteración de leves",
+        "condicion": "mas_de_3_faltas_leves_en_ventana",
+        "ventana_dias": 30,
+        "categoria": "GRAVE",
+        "prioridad": 1
+      },
+      {
+        "id": "R2",
+        "nombre": "Reiteración de graves",
+        "condicion": "mas_de_2_faltas_graves_en_periodo",
+        "ventana": "semestre",
+        "categoria": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R3",
+        "nombre": "Daño intencional a infraestructura",
+        "condicion": "texto_contiene_senial_dano_bienes",
+        "categoria": "GRAVE",
+        "prioridad": 1
+      },
+      {
+        "id": "R4",
+        "nombre": "Acoso sistemático",
+        "condicion": "texto_contiene_senial_acoso_sistematico",
+        "categoria": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R5",
+        "nombre": "Uso de armas o elementos peligrosos",
+        "condicion": "texto_contiene_senial_arma_peligro",
+        "categoria": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R6",
+        "nombre": "Falsificación o manipulación de documentos oficiales",
+        "condicion": "texto_contiene_senial_falsificacion",
+        "categoria": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R7",
+        "nombre": "Robo o hurto",
+        "condicion": "texto_contiene_senial_robo_hurto",
+        "categoria": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R8",
+        "nombre": "Amenazas graves",
+        "condicion": "texto_contiene_senial_amenaza_grave",
+        "categoria": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R9",
+        "nombre": "Intento de autoagresión",
+        "condicion": "texto_contiene_senial_autoagresion",
+        "categoria": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R10",
+        "nombre": "Conductas sexuales inapropiadas",
+        "condicion": "texto_contiene_senial_sexual_inapropiada",
+        "categoria": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R11",
+        "nombre": "Violencia digital o uso de IA para dañar",
+        "condicion": "texto_contiene_senial_violencia_digital_ia",
+        "categoria": "GRAVE",
+        "subcategoria_si_hay_lesion_o_dano_mayor": "GRAVÍSIMA",
+        "prioridad": 1
+      },
+      {
+        "id": "R12",
+        "nombre": "Violencia relacional encubierta",
+        "condicion": "texto_contiene_senial_exclusion_sistematica",
+        "categoria": "GRAVE",
+        "prioridad": 1
+      }
+    ]
+  },
+  "seniales": {
+    "gravedad_critica": [
+      {
+        "senal": "daño_fisico_persona",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["agredió", "golpeó", "empujó", "lesionó", "lastimó", "violencia física", "peleó", "ataque físico"]
+      },
+      {
+        "senal": "arma_elemento_peligroso",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["arma", "cuchillo", "elemento cortopunzante", "objeto peligroso", "sustancia peligrosa"]
+      },
+      {
+        "senal": "acoso_sistematico",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["acoso sistemático", "bullying", "maltrato sistemático", "hostigamiento continuo"]
+      },
+      {
+        "senal": "falsificacion_documento_oficial",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["falsificó", "alteró libro de clases", "manipuló documento oficial", "intervino documento"]
+      },
+      {
+        "senal": "robo_hurto",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["robó", "hurtó", "sustrajo", "se apropió de"]
+      },
+      {
+        "senal": "amenaza_grave",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["amenazó de muerte", "amenazó con arma", "amenaza seria", "extorsión"]
+      },
+      {
+        "senal": "autoagresion",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["autoagresión", "autolesión", "ideación suicida", "intento de suicidio"]
+      },
+      {
+        "senal": "conducta_sexual_inapropiada",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["conducta sexual inapropiada", "acoso sexual", "acto sexual"]
+      },
+      {
+        "senal": "consumo_sustancias",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["consumió drogas", "portó alcohol", "sustancias prohibidas", "bebidas alcohólicas"]
+      },
+      {
+        "senal": "deepfake_ia_ofensivo",
+        "peso": 5,
+        "categoria_orientadora": "GRAVÍSIMA",
+        "keywords": ["deepfake", "IA ofensiva", "suplantación digital avanzada", "montaje ofensivo con IA"]
+      }
+    ],
+    "gravedad_alta": [
+      {
+        "senal": "lenguaje_ofensivo",
+        "peso": 3,
+        "categoria_orientadora": "GRAVE",
+        "keywords": ["insultó", "palabrotas", "ofendió verbalmente", "trató mal", "expresiones ofensivas"]
+      },
+      {
+        "senal": "acoso_intimidacion",
+        "peso": 3,
+        "categoria_orientadora": "GRAVE",
+        "keywords": ["acosó", "intimidó", "hizo sentir mal", "comentarios intimidatorios", "comentarios hirientes"]
+      },
+      {
+        "senal": "daño_bienes",
+        "peso": 3,
+        "categoria_orientadora": "GRAVE",
+        "keywords": ["rompió", "rayó", "destruyó", "dañó útiles", "dañó infraestructura", "dañó mobiliario"]
+      },
+      {
+        "senal": "engaño_falsificacion",
+        "peso": 3,
+        "categoria_orientadora": "GRAVE",
+        "keywords": ["engañó a funcionario", "falsificó", "alteró", "intervino"]
+      },
+      {
+        "senal": "deshonestidad_academica",
+        "peso": 3,
+        "categoria_orientadora": "GRAVE",
+        "keywords": ["copió en evaluación", "permitió copiar", "plagio", "adulteró trabajo", "actitud deshonesta"]
+      },
+      {
+        "senal": "violencia_digital",
+        "peso": 3,
+        "categoria_orientadora": "GRAVE",
+        "keywords": ["difundió información sin permiso", "grabó sin consentimiento", "redes sociales", "publicación ofensiva", "difusión no consentida"]
+      },
+      {
+        "senal": "exclusion_sistematica",
+        "peso": 3,
+        "categoria_orientadora": "GRAVE",
+        "keywords": ["aisló", "excluyó", "presionó grupo para rechazar", "organizó exclusión"]
+      },
+      {
+        "senal": "juego_peligroso",
+        "peso": 3,
+        "categoria_orientadora": "GRAVE",
+        "keywords": ["juego peligroso", "desafío riesgoso", "juego coercitivo", "actividad de riesgo"]
+      }
+    ],
+    "gravedad_leve": [
+      {
+        "senal": "no_tareas",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["no entregó tarea", "no cumplió trabajo asignado", "tarea pendiente", "no presentó trabajo"]
+      },
+      {
+        "senal": "no_materiales",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["no trajo materiales", "no portó útiles", "olvidó cuaderno", "olvidó libro", "no porta materiales"]
+      },
+      {
+        "senal": "uniforme",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["uniforme incompleto", "no usó uniforme", "presentación personal inadecuada"]
+      },
+      {
+        "senal": "atraso",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["llegó tarde", "atraso injustificado", "ingreso con retraso"]
+      },
+      {
+        "senal": "interrupcion_leve",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["interrumpió clase", "conversó en voz alta", "salió sin permiso", "levantó sin permiso"]
+      },
+      {
+        "senal": "uso_celular",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["usó celular sin autorización", "dispositivo electrónico no autorizado", "usó audífonos sin permiso"]
+      },
+      {
+        "senal": "alimentos",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["comió en lugar no habilitado", "ingerir alimentos en aula", "alimentos en pasillo"]
+      },
+      {
+        "senal": "juego_riesgo_leve",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["juego riesgoso sin lesión", "actividad física riesgosa leve"]
+      },
+      {
+        "senal": "burlas_ocasionales",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["burlas ocasionales", "comentario despectivo leve", "trato grosero ocasional"]
+      },
+      {
+        "senal": "venta_sin_autorizacion",
+        "peso": 1,
+        "categoria_orientadora": "LEVE",
+        "keywords": ["vendió productos sin autorización", "venta en horario escolar"]
+      }
+    ]
+  },
+  "eventos": {
+    "cuentan": [
+      "falta_leve",
+      "falta_grave",
+      "falta_gravísima",
+      "negativa",
+      "falta",
+      "inasistencia_injustificada",
+      "atraso_reiterado",
+      "no_cumplimiento_tareas",
+      "no_portar_materiales",
+      "uso_indebido_dispositivos",
+      "interrupcion_clase"
+    ],
+    "no_cuentan": [
+      "justificativo",
+      "entrevista",
+      "observacion",
+      "observacion_neutra",
+      "seguimiento",
+      "positiva",
+      "felicitacion",
+      "reconocimiento_positivo"
+    ]
+  },
+  "ventanas": {
+    "amarillo": {
+      "dias": 30,
+      "descripcion": "Ventana móvil de 30 días para conteo de eventos hacia amarillo"
+    },
+    "rojo": {
+      "dias_semestre": 180,
+      "descripcion": "Conteo desde inicio de periodo/semestre para rojo"
+    },
+    "reiteracion_leves": {
+      "dias": 30,
+      "umbral": 3,
+      "accion": "R1: promover a GRAVE"
+    },
+    "reiteracion_graves": {
+      "ventana_dias": 180,
+      "umbral": 2,
+      "accion": "R2: promover a GRAVÍSIMA"
+    }
+  },
+  "semaforo": {
+    "verde": {
+      "eventos_max_global": 2,
+      "descripcion": "0-2 eventos en 30 días"
+    },
+    "amarillo": {
+      "eventos_minimos": 3,
+      "ventana_dias": 30,
+      "acciones": [
+        "generar_amonestacion_escrita",
+        "derivar_convivencia",
+        "derivar_utp_si_hay_eje_academico",
+        "notificar_apoderado"
+      ]
+    },
+    "rojo": {
+      "eventos_minimos": 10,
+      "ventana_dias": 180,
+      "activacion_inmediata_por_falta_grave": true,
+      "activacion_inmediata_por_faltas_graves_reiteradas": 2,
+      "acciones": [
+        "generar_informe_caso_critico",
+        "citacion_apoderado",
+        "plan_reparacion_restaurativa",
+        "derivacion_psicosocial",
+        "derivar_utp",
+        "agregar_a_tabla_seguimiento_casos"
+      ]
+    }
+  },
+  "bajada_semaforo": {
+    "de_rojo_a_amarillo": {
+      "dias_sin_eventos": 30,
+      "seguimientos_requeridos": 3
+    },
+    "de_amarillo_a_verde": {
+      "dias_sin_eventos": 60,
+      "seguimientos_requeridos": 6
+    }
+  }
+}
