@@ -342,16 +342,15 @@ Object.assign(Storage, {
         'gestiones_asistencia', 'alertas_inspectoria', 'derivaciones', 'eventos_agenda',
         'documentos', 'usuarios', 'matriculas_anuales'
       ];
-      const postulacionesCollections = []; // Postulaciones no activa en runtime de gestión
       const client = (typeof window.getSupabaseClient === 'function')
         ? window.getSupabaseClient()
         : window.supabaseGestion;
-      const targetCollections = [...collections, ...postulacionesCollections];
+      const targetCollections = [...collections];
 
       try {
         const activeId = Storage.activeSchool || 'demo';
         // Collections that are global (not tenant-scoped)
-        const globalCollections = ['colegios', 'config', 'postulantes', 'postulaciones', 'documentos_postulacion'];
+        const globalCollections = ['colegios', 'config'];
 
         await Promise.all(targetCollections.map(async (col) => {
           let query = client.from(col).select('*');

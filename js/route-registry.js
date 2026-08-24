@@ -42,9 +42,6 @@ const RouteRegistry = (() => {
     'consultas': (contentBody) => {
       if (typeof ConsultasProfesoresView !== 'undefined') ConsultasProfesoresView.render(contentBody);
     },
-    'postulantes': (contentBody) => {
-      if (typeof PostulantesView !== 'undefined') PostulantesView.render(contentBody);
-    },
     'asistencia': (contentBody) => {
       if (typeof AsistenciaView !== 'undefined') AsistenciaView.render(contentBody);
     },
@@ -80,10 +77,6 @@ const RouteRegistry = (() => {
         else SuperAdminView.render(contentBody);
       } else if (hash.startsWith('#/superadmin/gestion')) {
         SuperAdminView.currentSystem = 'gestion';
-        SuperAdminView.render(contentBody);
-      } else if (hash.startsWith('#/superadmin/postulaciones')) {
-        SuperAdminView.currentSystem = 'postulaciones';
-        SuperAdminView.currentTab = 'postulaciones';
         SuperAdminView.render(contentBody);
       } else {
         SuperAdminView.render(contentBody);

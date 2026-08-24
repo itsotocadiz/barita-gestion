@@ -58,13 +58,10 @@ const SuperAdminView = {
           <h3 class="card-title inline-flex items-center gap-2" style="margin: 0;">${Icons.get('crown', 20)} Panel Super Administrador</h3>
         </div>
         <div class="card-body">
-          <p class="text-muted">Selecciona el sistema que deseas administrar:</p>
+          <p class="text-muted">Administración global del SaaS Gestión.</p>
           <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
             <button class="btn btn-primary inline-flex items-center justify-center gap-2" onclick="SuperAdminView.switchSystem('gestion')" style="flex: 1; min-width: 220px; padding: 1.5rem; font-size: 1.1rem; font-weight: 700;">
               ${Icons.get('school', 20)} Sistema de Gestión
-            </button>
-            <button class="btn btn-secondary inline-flex items-center justify-center gap-2" onclick="SuperAdminView.switchSystem('postulaciones')" style="flex: 1; min-width: 220px; padding: 1.5rem; font-size: 1.1rem; font-weight: 700;">
-              ${Icons.get('target', 20)} Sistema de Postulaciones
             </button>
           </div>
         </div>
@@ -154,42 +151,26 @@ const SuperAdminView = {
   },
 
   table(name) {
-    const system = this.currentSystem === 'postulaciones' ? 'postulaciones' : 'gestion';
-    if (system === 'postulaciones') {
-      if (name === 'postulantes') return window.supabasePostulaciones.from('postulantes');
-      if (name === 'postulaciones') return window.supabasePostulaciones.from('postulaciones');
-      return window.supabasePostulaciones.from(name);
-    }
     if (name === 'colegios') return window.supabaseGestion.from('colegios');
     if (name === 'usuarios') return window.supabaseGestion.from('usuarios');
     if (name === 'funcionarios') return window.supabaseGestion.from('funcionarios');
     return window.supabaseGestion.from(name);
   },
-  clientForSystem(system) {
-    return window.getSupabaseClient(system === 'postulaciones' ? 'postulaciones' : 'gestion');
+  clientForSystem() {
+    return window.getSupabaseClient('gestion');
   },
   safeClient() {
-    return this.clientForSystem(this.currentSystem);
+    return this.clientForSystem('gestion');
   },
 
   async loadData() {
-    // Cargar colegios
     const { data: snapColegios } = await this.table('colegios').select('*');
     this.colegiosList = snapColegios || [];
-
-    if (this.currentSystem === 'postulaciones') {
-      const { data: snapPostulantes } = await this.table('postulantes').select('*');
-      this.docentesList = snapPostulantes || [];
-      this.directoresList = [];
-      const { data: snapUsuarios } = await this.table('usuarios').select('*');
-      this.usersList = snapUsuarios || [];
-    } else {
-      const { data: snapFuncionarios } = await this.table('funcionarios').select('*');
-      this.docentesList = snapFuncionarios || [];
-      this.directoresList = [];
-      const { data: snapUsers } = await this.table('usuarios').select('*');
-      this.usersList = snapUsers || [];
-    }
+    const { data: snapFuncionarios } = await this.table('funcionarios').select('*');
+    this.docentesList = snapFuncionarios || [];
+    this.directoresList = [];
+    const { data: snapUsers } = await this.table('usuarios').select('*');
+    this.usersList = snapUsers || [];
   },
 
   renderLayout(container) {
