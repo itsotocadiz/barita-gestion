@@ -75,6 +75,21 @@ const Auth = (() => {
       if (typeof Storage !== 'undefined' && Storage.setSchool) {
         await Storage.setSchool(Storage.activeSchool || 'demo');
       }
+      // BLOQUEO POR SUSCRIPCIÓN (aplica a sesión restaurada / Google OAuth)
+      if(state.currentRole !== 'superadmin' && typeof Storage!=='undefined' && Storage.activeSchool){
+        try{
+          const chkClient = window.getSupabaseClient('gestion');
+          const { data: colChk2 } = await chkClient.from('colegios').select('estado_suscripcion,suscripcion,motivo_bloqueo').eq('id', Storage.activeSchool).maybeSingle();
+          const v2 = (colChk2?.estado_suscripcion || colChk2?.suscripcion || '').toString().toLowerCase();
+          if(v2 === 'bloqueado' || v2 === 'suspendida'){
+            App.showToast('Colegio bloqueado por falta de pago: ' + (colChk2.motivo_bloqueo||'Contacte administración'), 'danger');
+            // Forzar logout suave y mostrar login
+            setTimeout(()=>{ try{ handleLogout(); }catch(_e){} }, 800);
+            // No continuar con showApp inmediato, dejar que logout maneje
+            return;
+          }
+        }catch(_e){ console.warn('Check bloqueo en _handleUserLoggedIn:', _e); }
+      }
     } catch (e) {
       console.error('Error obteniendo rol de usuario:', e);
     }
@@ -279,6 +294,25 @@ const Auth = (() => {
 
       // Esperar rol antes de decidir hash (fix UTP/PIE/Dirección)
       await fetchUserRole(data.user.id);
+      // BLOQUEO POR SUSCRIPCIÓN: si el colegio está bloqueado, impedir login (excepto superadmin)
+      try{
+        const activeSchoolForCheck = (typeof Storage!=='undefined' && Storage.activeSchool) ? Storage.activeSchool : (state.userProfile?.colegio_id || state.userProfile?.colegioId || '');
+        if(activeSchoolForCheck && state.currentRole !== 'superadmin'){
+          const clientChk = window.getSupabaseClient('gestion');
+          const { data: colChk } = await clientChk.from('colegios').select('estado_suscripcion,suscripcion,motivo_bloqueo').eq('id', activeSchoolForCheck).maybeSingle();
+          const v = (colChk?.estado_suscripcion || colChk?.suscripcion || '').toString().toLowerCase();
+          const isBlocked = v === 'bloqueado' || v === 'suspendida';
+          if(isBlocked){
+            try{ await clientChk.auth.signOut({ scope: 'local' }); }catch(_e){}
+            state.currentUser=null; state.currentRole=null; state.userProfile=null;
+            throw new Error('Colegio bloqueado por falta de pago: ' + (colChk.motivo_bloqueo || 'Contacte a administración — suscripción suspendida.'));
+          }
+        }
+      }catch(chkErr){
+        if(chkErr && chkErr.message && chkErr.message.includes('Colegio bloqueado')) throw chkErr;
+        // si falla el check por red, no bloquea y continúa (fail-open para no dejar fuera por error temporal)
+        console.warn('Check bloqueo colegio falló:', chkErr);
+      }
       try { localStorage.removeItem('barita_pending_role'); state.pendingRole = null; } catch(_e){}
 
       // Sincronización inmediata de interfaz
@@ -315,10 +349,21 @@ const Auth = (() => {
       const loginFormCont = document.getElementById('login-form-container');
       if (loginFormCont) loginFormCont.style.display = 'block';
 
-      const msg = document.getElementById('login-error-msg');
-      const out = (msg && msg.innerText) ? msg : errorDiv;
-      out.textContent = 'Error: Credenciales inválidas o cuenta no registrada.';
-      out.style.display = 'block';
+      const isBlockedError = error && error.message && error.message.includes('Colegio bloqueado');
+      const displayMsg = isBlockedError ? error.message : 'Error: Credenciales inválidas o cuenta no registrada.';
+      // usar login-error (el que siempre existe) y también login-error-msg si existe
+      try{
+        const el1 = document.getElementById('login-error');
+        const el2 = document.getElementById('login-error-msg');
+        if(el1){ el1.textContent = displayMsg; el1.style.display='block'; }
+        if(el2){ el2.textContent = displayMsg; el2.style.display='block'; }
+        // compat con variable errorDiv del inicio
+        if(errorDiv){ errorDiv.textContent = displayMsg; errorDiv.style.display='block'; }
+      }catch(_e){
+        if(errorDiv){ errorDiv.textContent = displayMsg; errorDiv.style.display='block'; }
+      }
+      // re-habilitar overlay login para que no quede pegado
+      try{ document.getElementById('login-overlay').style.display='flex'; }catch(_e){}
       btn.disabled = false;
       btn.innerText = 'Ingresar';
     }

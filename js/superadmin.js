@@ -260,13 +260,28 @@ const SuperAdminView = {
   },
 
   async toggleSuscripcion(id) {
+    if(Auth.currentRole !== 'superadmin'){ App.showToast('Solo SUPER_ADMIN','danger'); return; }
     const colegio = this.colegiosList.find(c => c.id === id);
     if (!colegio) return;
-    const nuevoEstado = colegio.suscripcion === 'activa' ? 'suspendida' : 'activa';
-    await this.table('colegios').update({ suscripcion: nuevoEstado }).eq('id', id);
-    this.colegiosList = this.colegiosList.map(c => c.id === id ? { ...c, suscripcion: nuevoEstado } : c);
-    App.showToast(`Suscripción ${nuevoEstado === 'activa' ? 'activada' : 'cancelada'} para ${colegio.nombre}`, 'success');
-    this.renderLayout(document.getElementById('app-content'));
+    const actualmenteBloqueado = this._isBloqueado(colegio);
+    const nuevoBloqueado = !actualmenteBloqueado;
+    const nuevoEstado = nuevoBloqueado ? 'bloqueado' : 'activo';
+    const suscripcion = nuevoBloqueado ? 'suspendida' : 'activa';
+    // Si va a bloquear, pedir motivo rápido
+    let motivo = colegio.motivo_bloqueo || '';
+    if(nuevoBloqueado){
+      motivo = prompt(`Motivo del bloqueo para ${colegio.nombre}:`, motivo) || '';
+      if(!motivo.trim()){ App.showToast('Bloqueo cancelado — indique motivo','warning'); return; }
+    }
+    try{
+      const payload = { estado_suscripcion: nuevoEstado, suscripcion, motivo_bloqueo: nuevoBloqueado?motivo:null, fecha_bloqueo: nuevoBloqueado?new Date().toISOString():null, bloqueado_por: nuevoBloqueado?(Auth.currentUser?.uid||Auth.currentUser?.id||null):null, bloqueado_at: nuevoBloqueado?new Date().toISOString():null, updated_at: new Date().toISOString() };
+      const { error } = await this.table('colegios').update(payload).eq('id', id);
+      if(error) throw error;
+      try{ await this.table('auditoria_colegios').insert({ colegio_id: id, accion: nuevoBloqueado?'bloquear':'desbloquear', por: Auth.currentUser?.uid||Auth.currentUser?.id||null, detalle: { motivo } }); }catch(_e){}
+      this.colegiosList = this.colegiosList.map(c => c.id === id ? { ...c, ...payload, motivo_bloqueo: payload.motivo_bloqueo } : c);
+      App.showToast(`Colegio ${nuevoBloqueado?'bloqueado':'desbloqueado'} — ${this._esc(colegio.nombre)}`, nuevoBloqueado?'warning':'success');
+      this.renderLayout(document.getElementById('app-content'));
+    }catch(e){ App.showToast('Error toggle: '+e.message,'danger'); }
   },
 
   switchTab(tab) {
@@ -388,17 +403,33 @@ const SuperAdminView = {
   // -------------------------------------------------------------
   // PESTAÑA: COLEGIOS
   // -------------------------------------------------------------
+  // Helper XSS-safe
+  _esc(s){ try{ return (typeof Storage!=='undefined' && Storage.escapeHtml) ? Storage.escapeHtml(s) : (typeof S==='function'?S(s):String(s||'').replace(/[<>"'&]/g,'')); }catch(_e){ return String(s||''); } },
+
+  _isBloqueado(c){
+    const v = (c.estado_suscripcion || c.suscripcion || 'activa').toString().toLowerCase();
+    return v === 'bloqueado' || v === 'suspendida';
+  },
+
   renderColegios() {
-    let rows = this.colegiosList.map(c => `
-      <tr>
-        <td style="padding: 1rem; vertical-align: middle;"><b>${c.nombre}</b></td>
-        <td style="padding: 1rem; vertical-align: middle;">${c.rbd || ''}</td>
-        <td style="padding: 1rem; vertical-align: middle; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
-          <button class="btn btn-sm btn-primary inline-flex items-center gap-1" onclick="SuperAdminView.ingresarAColegio('${c.id}')">${Icons.get('school', 14)} Ingresar</button>
-          <button class="btn btn-sm btn-secondary inline-flex items-center gap-1" onclick="SuperAdminView.editarColegio('${c.id}')">${Icons.get('pencil', 14)} Editar</button>
+    let rows = this.colegiosList.map(c => {
+      const bloqueado = this._isBloqueado(c);
+      const estadoBadge = bloqueado
+        ? `<span class="badge badge-danger" title="${this._esc(c.motivo_bloqueo||'Bloqueado por suscripción')}">Bloqueado</span>`
+        : `<span class="badge badge-success">Activo</span>`;
+      const logo = c.logo_url ? `<img src="${this._esc(c.logo_url)}" alt="" style="width:28px;height:28px;object-fit:contain;border-radius:6px;border:1px solid var(--border-card);background:#fff;margin-right:0.5rem;vertical-align:middle;" onerror="this.style.display='none'">` : '';
+      const rbd = this._esc(c.rbd || '');
+      const dir = this._esc(c.director_nombre || c.director || '');
+      return `
+      <tr style="${bloqueado ? 'opacity:0.85;background:var(--badge-danger-bg);' : ''}">
+        <td style="padding: 1rem; vertical-align: middle;"><div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">${logo}<b>${this._esc(c.nombre)}</b> ${estadoBadge} ${dir ? `<span class="text-muted" style="font-size:0.75rem;">— ${dir}</span>`:''}</div>${bloqueado && c.motivo_bloqueo ? `<div class="text-muted" style="font-size:0.7rem;margin-top:0.2rem;">Motivo: ${this._esc(c.motivo_bloqueo)}</div>`:''}</td>
+        <td style="padding: 1rem; vertical-align: middle;">${rbd}</td>
+        <td style="padding: 1rem; vertical-align: middle; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap:wrap;">
+          <button class="btn btn-sm btn-primary inline-flex items-center gap-1" ${bloqueado ? 'disabled title="Colegio bloqueado por suscripción — desbloquee en Editar"' : ''} onclick="${bloqueado ? '' : `SuperAdminView.ingresarAColegio('${this._esc(c.id)}')`}">${Icons.get('school', 14)} Ingresar</button>
+          <button class="btn btn-sm btn-secondary inline-flex items-center gap-1" onclick="SuperAdminView.editarColegio('${this._esc(c.id)}')">${Icons.get('pencil', 14)} Editar</button>
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
 
     const demoInList = this.colegiosList.some(col => col.nombre.toLowerCase().includes('demo'));
     const terraInList = this.colegiosList.some(col => col.nombre.toLowerCase().includes('terra di bimbi'));
@@ -454,25 +485,54 @@ const SuperAdminView = {
 
   nuevoColegio() {
     const html = `
-      <form id="form-nuevo-colegio" onsubmit="event.preventDefault(); SuperAdminView.guardarColegio()">
-        <div class="form-group mb-3">
-          <label class="form-label">Nombre del Colegio *</label>
-          <input type="text" id="col-nombre" class="form-control" required placeholder="Ej: Colegio San Agustín">
+      <form id="form-nuevo-colegio" onsubmit="event.preventDefault(); SuperAdminView.guardarColegio()" novalidate>
+        <div class="barita-grid-2">
+          <div class="form-group mb-3">
+            <label class="form-label">Nombre del Colegio *</label>
+            <input type="text" id="col-nombre" class="form-control" required placeholder="Ej: Colegio San Agustín" maxlength="120">
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label">RBD</label>
+            <input type="text" id="col-rbd" class="form-control" placeholder="12345-6" pattern="\\d{1,5}-[0-9Kk]" title="Formato: 12345-6">
+          </div>
         </div>
-        <div class="form-group mb-3">
-          <label class="form-label">RBD</label>
-          <input type="text" id="col-rbd" class="form-control" placeholder="Ej: 1234-56">
+        <fieldset class="form-group barita-fieldset mb-3">
+          <legend class="form-label">Logo Colegio</legend>
+          <div class="barita-logo-grid">
+            <div class="barita-logo-preview" aria-live="polite">
+              <div id="col-logo-fallback-new" class="barita-logo-fallback" style="display:flex;">${Icons.get('image',24)}<span>Sin logo</span></div>
+              <img id="col-logo-preview-new" src="" alt="Preview logo" style="display:none;" onerror="this.style.display='none';document.getElementById('col-logo-fallback-new').style.display='flex'">
+            </div>
+            <div class="flex-col gap-2">
+              <label for="col-logo-file" class="btn btn-secondary btn-sm" style="cursor:pointer;justify-content:center;">📁 Subir archivo</label>
+              <input type="file" id="col-logo-file" accept="image/png,image/jpeg,image/webp,.svg" class="sr-only" onchange="SuperAdminView.previewLogoFile(this, 'col-logo-preview-new', 'col-logo-fallback-new', 'col-logo-url')">
+              <div class="flex items-center gap-2" style="font-size:.75rem;color:var(--text-secondary);">o pega URL</div>
+              <input type="url" id="col-logo-url" class="form-control" placeholder="https://..." oninput="SuperAdminView.previewLogoUrl(this.value, 'col-logo-preview-new', 'col-logo-fallback-new')">
+            </div>
+          </div>
+        </fieldset>
+        <div class="barita-grid-2">
+          <div class="form-group mb-3">
+            <label class="form-label">Director / Nombre contacto *</label>
+            <input type="text" id="col-director" class="form-control" required placeholder="Nombre y apellido" maxlength="80">
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label">Email o Teléfono de Contacto *</label>
+            <input type="text" id="col-contacto" class="form-control" required placeholder="contacto@colegio.cl / +56 9...">
+          </div>
         </div>
-        <div class="form-group mb-3">
-          <label class="form-label">Email o Teléfono de Contacto *</label>
-          <input type="text" id="col-contacto" class="form-control" required placeholder="Ej: contacto@sanagustin.cl">
-        </div>
-        <div class="form-group mb-3">
-          <label class="form-label">Estado de Suscripción</label>
-          <select id="col-suscripcion" class="form-control">
-            <option value="activa">Activa</option>
-            <option value="suspendida">Suspendida</option>
-          </select>
+        <div class="form-group mb-3 barita-lock-card" id="lock-card-new">
+          <div class="flex justify-between items-center gap-4">
+            <div>
+              <h4 style="margin:0;font-size:.9rem;display:flex;gap:.4rem;align-items:center;">${Icons.get('lock',16)} Bloquear acceso por suscripción</h4>
+              <p class="text-muted" style="font-size:.75rem;margin:.15rem 0 0;">Desactiva el login de todo el colegio.</p>
+            </div>
+            <label class="barita-toggle"><input type="checkbox" id="col-bloqueo-toggle-new" onchange="SuperAdminView.toggleBloqueoMotivo(this.checked, 'col-bloqueo-motivo-wrap-new', 'lock-card-new', 'col-bloqueo-motivo-new')"><span class="barita-toggle-track"></span></label>
+          </div>
+          <div id="col-bloqueo-motivo-wrap-new" style="display:none;" class="mt-4">
+            <label class="form-label">Motivo del bloqueo *</label>
+            <textarea id="col-bloqueo-motivo-new" class="form-control" rows="2" placeholder="Ej: Morosidad 60 días"></textarea>
+          </div>
         </div>
       </form>
     `;
@@ -482,107 +542,272 @@ const SuperAdminView = {
       <button class="btn btn-primary" onclick="document.getElementById('form-nuevo-colegio').requestSubmit()">Crear Colegio</button>
     `;
 
-    App.openModal('Agregar Nuevo Colegio', html, footer);
+    App.openModal('Agregar Nuevo Colegio', html, footer, { ariaLabel: 'Agregar Nuevo Colegio' });
+  },
+
+  // Helpers logo preview
+  previewLogoFile(input, previewId, fallbackId, urlInputId){
+    try{
+      const f = input.files && input.files[0];
+      if(!f){ return; }
+      if(f.size > 2*1024*1024){ App.showToast('Logo muy pesado (máx 2MB)','warning'); input.value=''; return; }
+      if(!f.type.startsWith('image/')){ App.showToast('Solo imágenes','warning'); return; }
+      const r = new FileReader();
+      r.onload = e => {
+        const img = document.getElementById(previewId);
+        const fb = document.getElementById(fallbackId);
+        const urlIn = urlInputId ? document.getElementById(urlInputId) : null;
+        if(img){ img.src = e.target.result; img.style.display='block'; }
+        if(fb) fb.style.display='none';
+        if(urlIn) urlIn.value = '';
+      };
+      r.readAsDataURL(f);
+    }catch(_e){}
+  },
+  previewLogoUrl(url, previewId, fallbackId){
+    const img = document.getElementById(previewId);
+    const fb = document.getElementById(fallbackId);
+    if(!img) return;
+    const v = (url||'').trim();
+    if(!v || !(v.startsWith('http://')||v.startsWith('https://')||v.startsWith('data:image/'))){
+      img.style.display='none'; if(fb) fb.style.display='flex'; return;
+    }
+    img.src = v; img.style.display='block'; if(fb) fb.style.display='none';
+    img.onerror = () => { img.style.display='none'; if(fb) fb.style.display='flex'; };
+  },
+  clearLogo(previewId, fallbackId, urlInputId, fileInputId){
+    const img = document.getElementById(previewId);
+    const fb = document.getElementById(fallbackId);
+    if(img){ img.src=''; img.style.display='none'; } if(fb) fb.style.display='flex';
+    const u = urlInputId ? document.getElementById(urlInputId) : null; if(u) u.value='';
+    const f = fileInputId ? document.getElementById(fileInputId) : null; if(f) f.value='';
+  },
+  toggleBloqueoMotivo(checked, wrapId, cardId, motivoId){
+    const w = document.getElementById(wrapId);
+    const c = document.getElementById(cardId);
+    const m = document.getElementById(motivoId);
+    if(w) w.style.display = checked ? 'block' : 'none';
+    if(c) c.classList.toggle('is-blocked', checked);
+    if(m){ if(checked) m.setAttribute('required',''); else m.removeAttribute('required'); }
   },
 
   editarColegio(id) {
+    if(Auth.currentRole !== 'superadmin'){ App.showToast('Solo SUPER_ADMIN puede editar colegios','danger'); return; }
     const c = this.colegiosList.find(col => col.id === id);
     if (!c) return;
-
+    const bloqueado = this._isBloqueado(c);
+    const safeId = this._esc(id);
     const html = `
-      <form id="form-edit-colegio" onsubmit="event.preventDefault(); SuperAdminView.actualizarColegio('${id}')">
-        <div class="form-group mb-3">
-          <label class="form-label">Nombre del Colegio *</label>
-          <input type="text" id="col-nombre-edit" class="form-control" value="${c.nombre}" required>
+      <form id="form-edit-colegio" onsubmit="event.preventDefault(); SuperAdminView.actualizarColegio('${safeId}')" novalidate>
+        <div class="barita-modal-status ${bloqueado ? 'is-blocked' : 'is-active'}" role="status" aria-live="polite">
+          <span class="status-indicator ${bloqueado ? 'status-red' : 'status-green'}"><span class="dot"></span>${bloqueado ? 'Acceso Bloqueado' : 'Acceso Activo'}</span>
+          <span class="text-muted" style="font-size:.75rem;">${bloqueado ? this._esc(c.motivo_bloqueo||'Bloqueado por suscripción') : 'Suscripción al día'}</span>
         </div>
-        <div class="form-group mb-3">
-          <label class="form-label">Email o Teléfono de Contacto *</label>
-          <input type="text" id="col-contacto-edit" class="form-control" value="${c.contacto || ''}" required>
+        <div class="barita-grid-2">
+          <div class="form-group mb-3">
+            <label class="form-label">Nombre del Colegio *</label>
+            <input type="text" id="col-nombre-edit" class="form-control" value="${this._esc(c.nombre)}" required maxlength="120">
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label">RBD</label>
+            <input type="text" id="col-rbd-edit" class="form-control" value="${this._esc(c.rbd||'')}" pattern="\\d{1,5}-[0-9Kk]" placeholder="12345-6" title="Formato: 12345-6">
+          </div>
         </div>
-        <div class="form-group mb-3">
-          <label class="form-label">RBD</label>
-          <input type="text" id="col-rbd-edit" class="form-control" value="${(c.rbd || '').toString()}">
+        <fieldset class="form-group barita-fieldset mb-3">
+          <legend class="form-label">Logo Colegio</legend>
+          <div class="barita-logo-grid">
+            <div class="barita-logo-preview">
+              <img id="col-logo-preview" src="${this._esc(c.logo_url||'')}" alt="Preview" style="${c.logo_url?'display:block':'display:none'}" onerror="this.style.display='none';document.getElementById('col-logo-fallback').style.display='flex'">
+              <div id="col-logo-fallback" class="barita-logo-fallback" style="${c.logo_url?'display:none':'display:flex'}">${Icons.get('image',24)}<span>Sin logo</span></div>
+            </div>
+            <div class="flex-col gap-2">
+              <label for="col-logo-file-edit" class="btn btn-secondary btn-sm" style="cursor:pointer;justify-content:center;">📁 Subir archivo</label>
+              <input type="file" id="col-logo-file-edit" accept="image/png,image/jpeg,image/webp,.svg" class="sr-only" onchange="SuperAdminView.previewLogoFile(this, 'col-logo-preview', 'col-logo-fallback', 'col-logo-url-edit')">
+              <div class="flex items-center gap-2" style="font-size:.75rem;color:var(--text-secondary);">o pega URL</div>
+              <input type="url" id="col-logo-url-edit" class="form-control" value="${this._esc(c.logo_url||'')}" placeholder="https://..." oninput="SuperAdminView.previewLogoUrl(this.value, 'col-logo-preview', 'col-logo-fallback')">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="SuperAdminView.clearLogo('col-logo-preview','col-logo-fallback','col-logo-url-edit','col-logo-file-edit')" style="font-size:.7rem;">Quitar</button>
+            </div>
+          </div>
+        </fieldset>
+        <div class="barita-grid-2">
+          <div class="form-group mb-3">
+            <label class="form-label">Director / Nombre contacto *</label>
+            <input type="text" id="col-director-edit" class="form-control" value="${this._esc(c.director_nombre||c.director||'')}" required maxlength="80" placeholder="Nombre y apellido">
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label">Email o Teléfono de Contacto *</label>
+            <input type="text" id="col-contacto-edit" class="form-control" value="${this._esc(c.director_contacto||c.contacto||'')}" required placeholder="contacto@colegio.cl / +56 9...">
+          </div>
         </div>
-        <div class="form-group mb-3">
-          <label class="form-label">Estado de Suscripción</label>
-          <select id="col-suscripcion-edit" class="form-control">
-            <option value="activa" ${c.suscripcion === 'activa' ? 'selected' : ''}>Activa</option>
-            <option value="suspendida" ${c.suscripcion === 'suspendida' ? 'selected' : ''}>Suspendida</option>
-          </select>
+        <div class="form-group barita-lock-card ${bloqueado ? 'is-blocked' : ''}" id="lock-card-edit" role="group" aria-labelledby="lock-title">
+          <div class="flex justify-between items-center gap-4">
+            <div>
+              <h4 id="lock-title" style="margin:0;font-size:.9rem;display:flex;gap:.4rem;align-items:center;">${Icons.get('lock',16)} Bloquear acceso por suscripción</h4>
+              <p class="text-muted" style="font-size:.75rem;margin:.15rem 0 0;">Desactiva login de todos los usuarios del colegio.</p>
+            </div>
+            <label class="barita-toggle" aria-label="Bloquear acceso"><input type="checkbox" id="col-bloqueo-toggle" ${bloqueado?'checked':''} onchange="SuperAdminView.toggleBloqueoMotivo(this.checked, 'col-bloqueo-motivo-wrap', 'lock-card-edit', 'col-bloqueo-motivo')"><span class="barita-toggle-track"></span></label>
+          </div>
+          <div id="col-bloqueo-motivo-wrap" style="${bloqueado?'display:block':'display:none'}" class="mt-4">
+            <label class="form-label">Motivo del bloqueo *</label>
+            <textarea id="col-bloqueo-motivo" class="form-control" rows="2" placeholder="Ej: Morosidad 60 días, contrato vencido...">${this._esc(c.motivo_bloqueo||'')}</textarea>
+          </div>
         </div>
       </form>
     `;
 
     const footer = `
       <button class="btn btn-secondary" onclick="App.closeModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="SuperAdminView.eliminarColegio('${safeId}'); App.closeModal();" style="margin-right:auto;">${Icons.get('trash-2',14)} Eliminar</button>
       <button class="btn btn-primary" onclick="document.getElementById('form-edit-colegio').requestSubmit()">Guardar Cambios</button>
-      <button class="btn btn-danger" onclick="SuperAdminView.eliminarColegio('${id}'); App.closeModal();" style="margin-left: 0.5rem; ">Eliminar</button>
     `;
 
-    App.openModal('Editar Colegio', html, footer);
+    App.openModal('Editar Colegio', html, footer, { ariaLabel: 'Editar Colegio' });
+  },
+
+  _sanitizeNombre(v){ return (v||'').toString().trim().slice(0,120).replace(/[<>]/g,''); },
+  _sanitizeRbd(v){
+    const t=(v||'').toString().trim();
+    if(!t) return '';
+    if(!/^\d{1,5}-[0-9Kk]$/.test(t)){ App.showToast('RBD inválido. Formato: 12345-6','warning'); return null; }
+    return t;
+  },
+  _sanitizeLogo(v, fallback){
+    const s=(v||'').toString().trim();
+    if(!s) return fallback||'';
+    if(s.startsWith('data:image/')) return s.slice(0,8000);
+    try{
+      const u=new URL(s);
+      if(!['https:','http:'].includes(u.protocol)) return fallback||'';
+      // must be image extension or storage url
+      return s.slice(0,2000);
+    }catch(_e){ App.showToast('URL de logo inválida','warning'); return null; }
   },
 
   async guardarColegio() {
-    const nombre = document.getElementById('col-nombre').value.trim();
-    const rbd = document.getElementById('col-rbd') ? document.getElementById('col-rbd').value.trim() : '';
-    const contacto = document.getElementById('col-contacto').value.trim();
-    const suscripcion = document.getElementById('col-suscripcion').value;
+    if(Auth.currentRole !== 'superadmin'){ App.showToast('Solo SUPER_ADMIN puede crear colegios','danger'); return; }
+    const rawNombre = document.getElementById('col-nombre').value;
+    const nombre = this._sanitizeNombre(rawNombre);
+    if(!nombre || nombre.length < 3){ App.showToast('Nombre mínimo 3 caracteres','warning'); return; }
+    const rbdRaw = document.getElementById('col-rbd') ? document.getElementById('col-rbd').value : '';
+    const rbd = rbdRaw ? this._sanitizeRbd(rbdRaw) : '';
+    if(rbd===null) return;
+    const director_nombre = this._sanitizeNombre(document.getElementById('col-director') ? document.getElementById('col-director').value : '');
+    const director_contacto = (document.getElementById('col-contacto') ? document.getElementById('col-contacto').value.trim() : '').slice(0,120);
+    if(!director_contacto){ App.showToast('Contacto requerido','warning'); return; }
+    if(!director_nombre){ App.showToast('Director requerido','warning'); return; }
+    const previewNew = document.getElementById('col-logo-preview-new');
+    const urlNew = document.getElementById('col-logo-url') ? document.getElementById('col-logo-url').value : '';
+    let logo_url = '';
+    if(previewNew && previewNew.src && previewNew.style.display!=='none' && previewNew.src.startsWith('data:')) logo_url = previewNew.src;
+    else if(urlNew) logo_url = urlNew;
+    const sanitizedLogo = this._sanitizeLogo(logo_url, '');
+    if(sanitizedLogo===null) return;
+    logo_url = sanitizedLogo;
+    const isBlocked = document.getElementById('col-bloqueo-toggle-new') ? document.getElementById('col-bloqueo-toggle-new').checked : false;
+    const motivo = document.getElementById('col-bloqueo-motivo-new') ? document.getElementById('col-bloqueo-motivo-new').value.trim().slice(0,300) : '';
+    if(isBlocked && !motivo){ App.showToast('Indica motivo del bloqueo','warning'); return; }
+    const estado_suscripcion = isBlocked ? 'bloqueado' : 'activo';
+    const suscripcion = isBlocked ? 'suspendida' : 'activa';
 
     try {
       const docId = Date.now().toString();
-      const { error } = await this.table('colegios').insert({
+      const payload = {
         id: docId,
         nombre,
-        rbd,
-        contacto,
+        rbd: rbd||null,
+        contacto: director_contacto,
+        director_nombre,
+        director_contacto: director_contacto,
+        logo_url: logo_url||null,
         suscripcion,
-        createdAt: new Date().toISOString()
-      });
+        estado_suscripcion,
+        motivo_bloqueo: isBlocked ? motivo : null,
+        fecha_bloqueo: isBlocked ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await this.table('colegios').insert(payload);
       if (error) throw error;
-
+      // auditoria
+      try{ await this.table('auditoria_colegios').insert({ colegio_id: docId, accion: isBlocked?'crear_bloqueado':'crear', por: Auth.currentUser?.uid||Auth.currentUser?.id||null, detalle: payload }); }catch(_e){}
       App.closeModal();
       App.showToast('Colegio registrado exitosamente', 'success');
-      this.render(document.getElementById('app-content'));
+      await this.loadData();
+      this.renderLayout(document.getElementById('app-content'));
     } catch (e) {
-
       App.showToast('Error al crear colegio: ' + e.message, 'danger');
     }
   },
 
   async actualizarColegio(id) {
-    const nombre = document.getElementById('col-nombre-edit').value.trim();
-    const contacto = document.getElementById('col-contacto-edit').value.trim();
-    const rbd = document.getElementById('col-rbd-edit') ? document.getElementById('col-rbd-edit').value.trim() : '';
-    const suscripcion = document.getElementById('col-suscripcion-edit').value;
+    if(Auth.currentRole !== 'superadmin'){ App.showToast('Solo SUPER_ADMIN puede editar colegios','danger'); return; }
+    const rawNombre = document.getElementById('col-nombre-edit').value;
+    const nombre = this._sanitizeNombre(rawNombre);
+    if(!nombre || nombre.length < 3){ App.showToast('Nombre mínimo 3 caracteres','warning'); return; }
+    const rbdRaw = document.getElementById('col-rbd-edit') ? document.getElementById('col-rbd-edit').value : '';
+    const rbd = rbdRaw ? this._sanitizeRbd(rbdRaw) : '';
+    if(rbd===null) return;
+    const director_nombre = this._sanitizeNombre(document.getElementById('col-director-edit') ? document.getElementById('col-director-edit').value : '');
+    const director_contacto = (document.getElementById('col-contacto-edit') ? document.getElementById('col-contacto-edit').value.trim() : '').slice(0,120);
+    if(!director_contacto){ App.showToast('Contacto requerido','warning'); return; }
+    if(!director_nombre){ App.showToast('Director requerido','warning'); return; }
+    const urlEdit = document.getElementById('col-logo-url-edit') ? document.getElementById('col-logo-url-edit').value : '';
+    const previewEdit = document.getElementById('col-logo-preview');
+    let logo_url = '';
+    if(previewEdit && previewEdit.src && previewEdit.style.display!=='none' && previewEdit.src.startsWith('data:')) logo_url = previewEdit.src;
+    else if(urlEdit) logo_url = urlEdit;
+    // fallback to existing if both empty but there was previous logo
+    const existing = this.colegiosList.find(c=>c.id===id);
+    if(!logo_url && existing && existing.logo_url && (!previewEdit || previewEdit.style.display==='none') && !urlEdit) logo_url = '';
+    else if(!logo_url && existing && existing.logo_url && urlEdit==='') logo_url = existing.logo_url;
+    // Actually if user cleared, keep cleared; else use sanitized
+    const sanitizedLogo = logo_url ? this._sanitizeLogo(logo_url, existing ? existing.logo_url : '') : '';
+    if(sanitizedLogo===null) return;
+    logo_url = sanitizedLogo;
+    const isBlocked = document.getElementById('col-bloqueo-toggle') ? document.getElementById('col-bloqueo-toggle').checked : false;
+    const motivo = document.getElementById('col-bloqueo-motivo') ? document.getElementById('col-bloqueo-motivo').value.trim().slice(0,300) : '';
+    if(isBlocked && !motivo){ App.showToast('Indica motivo del bloqueo','warning'); return; }
+    const estado_suscripcion = isBlocked ? 'bloqueado' : 'activo';
+    const suscripcion = isBlocked ? 'suspendida' : 'activa';
 
     try {
-      const { error } = await this.table('colegios').update({
+      const payload = {
         nombre,
-        contacto,
-        rbd,
-        suscripcion
-      }).eq('id', id);
+        contacto: director_contacto,
+        director_nombre,
+        director_contacto,
+        rbd: rbd||null,
+        logo_url: logo_url||null,
+        suscripcion,
+        estado_suscripcion,
+        motivo_bloqueo: isBlocked ? motivo : null,
+        fecha_bloqueo: isBlocked ? new Date().toISOString() : null,
+        bloqueado_por: isBlocked ? (Auth.currentUser?.uid||Auth.currentUser?.id||null) : null,
+        bloqueado_at: isBlocked ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await this.table('colegios').update(payload).eq('id', id);
       if (error) throw error;
-
+      try{ await this.table('auditoria_colegios').insert({ colegio_id: id, accion: isBlocked?'bloquear':'desbloquear', por: Auth.currentUser?.uid||Auth.currentUser?.id||null, detalle: { motivo: motivo||null, estado: estado_suscripcion } }); }catch(_e){}
       App.closeModal();
-      App.showToast('Colegio actualizado correctamente', 'success');
-      this.render(document.getElementById('app-content'));
+      App.showToast(`Colegio ${isBlocked?'bloqueado':'desbloqueado'} y actualizado correctamente`, 'success');
+      await this.loadData();
+      this.renderLayout(document.getElementById('app-content'));
     } catch (e) {
-
       App.showToast('Error al actualizar colegio: ' + e.message, 'danger');
     }
   },
 
   async eliminarColegio(id) {
-    App.confirm('¿Eliminar Colegio?', 'Esta acción borrará al colegio de los registros generales.', async () => {
+    if(Auth.currentRole !== 'superadmin'){ App.showToast('Solo SUPER_ADMIN','danger'); return; }
+    App.confirm('¿Eliminar Colegio?', 'Esta acción borrará al colegio y quedará en auditoría. ¿Continuar?', async () => {
       try {
         const { error } = await this.table('colegios').delete().eq('id', id);
         if (error) throw error;
-        
+        try{ await this.table('auditoria_colegios').insert({ colegio_id: id, accion: 'eliminar', por: Auth.currentUser?.uid||Auth.currentUser?.id||null, detalle: { id } }); }catch(_e){}
         App.showToast('Colegio eliminado', 'success');
+        await this.loadData();
         this.render(document.getElementById('app-content'));
       } catch (e) {
-  
         App.showToast('Error al eliminar colegio: ' + e.message, 'danger');
       }
     });

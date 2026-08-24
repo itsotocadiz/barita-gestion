@@ -708,6 +708,33 @@ textarea.form-control {
   gap: 1rem;
 }
 
+/* ── Modal Editar Colegio — BARITA tokens only ── */
+.barita-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.barita-fieldset{border:1px solid var(--border-card);border-radius:var(--radius-md);padding:.85rem;background:var(--bg-card)}
+.barita-fieldset legend{padding:0 .4rem;font-size:.8rem;font-weight:600;color:var(--text-secondary)}
+.barita-logo-grid{display:grid;grid-template-columns:112px 1fr;gap:1rem;align-items:start}
+.barita-logo-preview{width:112px;height:112px;border-radius:var(--radius-lg);border:1px dashed var(--input-border);background:var(--bg-hover);display:grid;place-items:center;overflow:hidden}
+.barita-logo-preview img{width:100%;height:100%;object-fit:contain;background:white}
+.barita-logo-fallback{flex-direction:column;gap:.4rem;color:var(--text-secondary);font-size:.7rem;align-items:center;justify-content:center;display:flex}
+.barita-modal-status{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.6rem .85rem;border-radius:var(--radius-md);margin-bottom:1rem;border:1px solid var(--border-card)}
+.barita-modal-status.is-blocked{background:var(--badge-danger-bg);border-color:var(--badge-danger-border)}
+.barita-modal-status.is-active{background:var(--badge-success-bg);border-color:var(--badge-success-border)}
+.barita-lock-card{border:1px solid var(--border-card);border-radius:var(--radius-lg);padding:1rem;background:var(--bg-hover);border-left:4px solid var(--badge-success-border)}
+.barita-lock-card.is-blocked{border-left-color:var(--badge-danger-text);background:var(--badge-danger-bg)}
+.barita-toggle{position:relative;width:44px;height:26px;flex-shrink:0;cursor:pointer;display:inline-block}
+.barita-toggle input{opacity:0;width:0;height:0;position:absolute}
+.barita-toggle-track{position:absolute;inset:0;background:var(--border-card);border-radius:9999px;transition:var(--transition)}
+.barita-toggle-track::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;background:white;border-radius:50%;box-shadow:var(--shadow-sm);transition:var(--transition)}
+.barita-toggle input:checked + .barita-toggle-track{background:var(--badge-danger-text)}
+.barita-toggle input:checked + .barita-toggle-track::after{transform:translateX(18px)}
+.barita-toggle input:focus-visible + .barita-toggle-track{outline:2px solid var(--input-accent);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(max-width:640px){
+  .barita-grid-2,.barita-logo-grid{grid-template-columns:1fr}
+  .barita-logo-preview{width:100%;height:140px}
+  .modal-container{max-width:95vw;margin:1rem}
+}
+
 /* ── Toast Notifications ── */
 .toast-container {
   position: fixed;
