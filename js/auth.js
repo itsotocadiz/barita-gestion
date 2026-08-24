@@ -57,18 +57,6 @@ const Auth = (() => {
       }
     });
 
-    window.supabasePostulaciones.auth.onAuthStateChange(async (event, session) => {
-      if (state.isLoggingOut) return;
-      if (event === 'TOKEN_REFRESHED') {
-        console.log("Ignorando TOKEN_REFRESHED para evitar re-suscripcion y parpadeo");
-        return;
-      }
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        if (session?.user) await _handleUserLoggedIn(session.user, window.supabasePostulaciones);
-      } else if (event === 'SIGNED_OUT') {
-        if (!state.currentUser || state._activeClient === window.supabasePostulaciones) _handleUserLoggedOut();
-      }
-    });
   }
 
   async function _handleUserLoggedIn(user, client) {
@@ -208,16 +196,9 @@ const Auth = (() => {
 
     // 5. Enviar señal de deslogueo a Supabase con timeout de 2 segundos
     try {
-      const promises = [];
       if (window.supabaseGestion && window.supabaseGestion.auth) {
-        promises.push(window.supabaseGestion.auth.signOut({ scope: 'local' }));
-      }
-      if (window.supabasePostulaciones && window.supabasePostulaciones.auth) {
-        promises.push(window.supabasePostulaciones.auth.signOut({ scope: 'local' }));
-      }
-      if (promises.length > 0) {
         await Promise.race([
-          Promise.allSettled(promises),
+          window.supabaseGestion.auth.signOut({ scope: 'local' }),
           new Promise(r => setTimeout(r, 2000))
         ]);
       }
@@ -232,7 +213,7 @@ const Auth = (() => {
 
     setTimeout(() => {
       try {
-        const hasToken = !!(localStorage.getItem('barita-gestion-auth-token') || localStorage.getItem('barita-postulaciones-auth-token') || localStorage.getItem('barita_user_role'));
+        const hasToken = !!(localStorage.getItem('barita-gestion-auth-token') || localStorage.getItem('barita_user_role'));
         const stillLogged = !!state.currentUser;
         if (!hasToken && !stillLogged) state.isLoggingOut = false;
         else state.isLoggingOut = true;
