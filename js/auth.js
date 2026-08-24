@@ -893,8 +893,14 @@ const Auth = (() => {
       const displayName = state.userProfile?.nombres 
         ? `${state.userProfile.nombres} ${state.userProfile.apellidos || ''}`
         : (state.currentUser?.email || 'Usuario');
+      // Selector de rol en el mismo banner para cambiar sin volver atrás
+      const rolesForBanner = ['admin','directora','utp','pie','convivencia','profesor','inspectoria','finanzas','coordinadora'];
+      const optionsHtml = rolesForBanner.map(r=>`<option value="${r}" ${r===state.currentRole?'selected':''}>${r}</option>`).join('');
       banner.innerHTML = `
-        <span> Modo Simulación: Navegando como <b>${displayName}</b> (${state.currentRole})</span>
+        <span> Modo Simulación: <b>${displayName}</b> (${state.currentRole})</span>
+        <label style="display:flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.15);padding:.2rem .6rem;border-radius:6px;font-weight:600;">Rol:
+          <select onchange="Auth.impersonateUser(Auth.currentUser?.uid||Auth.currentUser?.id||'imp', this.value, {email: Auth.userProfile?.email||Auth.currentUser?.email, nombres: Auth.userProfile?.nombres||'Sim', apellidos: Auth.userProfile?.apellidos||'', colegio_id: Auth.userProfile?.colegio_id||Storage.activeSchool})" style="background:white;color:#6d28d9;border:none;border-radius:4px;padding:.15rem .4rem;font-weight:700;cursor:pointer;">${optionsHtml}</select>
+        </label>
         <button onclick="Auth.stopImpersonating()" style="background: white; color: #8b5cf6; border: none; padding: 0.25rem 0.75rem; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
           Volver a Super Admin
         </button>
@@ -912,17 +918,28 @@ const Auth = (() => {
   }
 
   function impersonateUser(targetUid, targetRole, targetProfile) {
+    const allowedImpersonate = ['admin','coordinadora','directora','profesor','utp','pie','convivencia','inspectoria','finanzas','postulante','directivo'];
+    if(targetRole === 'superadmin'){ App.showToast('No se puede emular superadmin','warning'); return; }
+    if(!allowedImpersonate.includes(targetRole)){ App.showToast('Rol no permitido','danger'); return; }
+    if (state.currentRole !== 'superadmin' && !sessionStorage.getItem('superadmin_original')) {
+      App.showToast('Solo SUPER_ADMIN puede suplantar','danger'); return;
+    }
     if (!sessionStorage.getItem('superadmin_original')) {
       const original = {
         uid: state.currentUser.uid,
         role: state.currentRole,
-        profile: state.userProfile
+        profile: state.userProfile,
+        colegio_id: (typeof Storage!=='undefined' && Storage.activeSchool) ? Storage.activeSchool : (state.userProfile?.colegio_id||''),
+        ts: Date.now()
       };
       sessionStorage.setItem('superadmin_original', JSON.stringify(original));
     }
+    // Enriquecer perfil con colegio objetivo si no viene
+    const targetColegio = (targetProfile && (targetProfile.colegio_id||targetProfile.colegioId)) || (state.userProfile?.colegio_id) || (typeof Storage!=='undefined'?Storage.activeSchool:'demo');
+    const enrichedProfile = { ...(targetProfile||{}), colegio_id: targetColegio, colegioId: targetColegio };
 
     state.currentRole = targetRole;
-    state.userProfile = targetProfile;
+    state.userProfile = enrichedProfile;
 
     App.showToast(`Simulando rol: ${targetRole}`, 'info');
 
@@ -941,8 +958,14 @@ const Auth = (() => {
     if (originalSession) {
       try {
         const original = JSON.parse(originalSession);
+        if(original.role !== 'superadmin'){ sessionStorage.removeItem('superadmin_original'); App.showToast('Sesión corrupta','danger'); return; }
+        if(original.ts && (Date.now() - original.ts > 8*60*60*1000)){ sessionStorage.removeItem('superadmin_original'); App.showToast('Sesión expirada','warning'); return; }
         state.currentRole = original.role;
         state.userProfile = original.profile;
+        // Restaurar colegio original si estaba guardado
+        if(original.colegio_id && typeof Storage!=='undefined' && Storage.setActiveSchool){
+          try{ Storage.activeSchool = original.colegio_id; localStorage.setItem('barita_active_school', original.colegio_id); }catch(_e){}
+        }
         sessionStorage.removeItem('superadmin_original');
 
         App.showToast('Sesión de Super Admin restaurada', 'success');

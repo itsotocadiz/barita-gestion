@@ -79,7 +79,11 @@ const SuperAdminView = {
     this.renderLayout(document.getElementById('app-content'));
   },
 
+  pendingSchoolId: null,
+  pendingRole: 'admin',
+
   async changeActiveSchool(schoolId) {
+    if(Auth.currentRole !== 'superadmin' && !sessionStorage.getItem('superadmin_original')){ App.showToast('Solo SUPER_ADMIN puede cambiar de colegio','danger'); return; }
     if (typeof Storage !== 'undefined' && Storage.setActiveSchool) {
       await Storage.setActiveSchool(schoolId);
     } else {
@@ -92,19 +96,94 @@ const SuperAdminView = {
   },
 
   ingresarAColegio(schoolId) {
-    this.changeActiveSchool(schoolId);
+    const colegio = this.colegiosList.find(c=>c.id===schoolId) || { id: schoolId, nombre: schoolId==='terra_di_bimbi' ? 'TERRA DI BIMBI' : (schoolId==='demo'?'Escuela DEMO':schoolId), rbd: schoolId==='terra_di_bimbi'?'RBD-002':'RBD-001', estado_suscripcion: 'activo', motivo_bloqueo: '' };
+    if(this._isBloqueado(colegio)){ App.showToast('Colegio bloqueado por suscripción — desbloquee en Editar','warning'); return; }
+    this.pendingSchoolId = schoolId;
+    this.pendingRole = 'admin';
+    this.openRoleBridgeModal(colegio);
+  },
+
+  openRoleBridgeModal(colegio){
+    const roles = [
+      {key:'admin', label:'Admin Local', desc:'Gestión total', icon:'shield-check'},
+      {key:'directora', label:'Directora', desc:'Visión directiva', icon:'crown'},
+      {key:'utp', label:'UTP', desc:'Currículum', icon:'book-open'},
+      {key:'pie', label:'PIE', desc:'Inclusión', icon:'puzzle'},
+      {key:'convivencia', label:'Convivencia', desc:'Clima escolar', icon:'heart-handshake'},
+      {key:'profesor', label:'Profesor', desc:'Aula', icon:'briefcase'},
+      {key:'inspectoria', label:'Inspectoría', desc:'Asistencia', icon:'clock'},
+      {key:'finanzas', label:'Finanzas', desc:'Pagos', icon:'dollar-sign'},
+      {key:'coordinadora', label:'Coordinadora', desc:'Operación', icon:'user-check'},
+    ];
+    const bloqueado = this._isBloqueado(colegio);
+    const grid = roles.map(r=>`
+      <button type="button" class="barita-role-card ${this.pendingRole===r.key?'is-selected':''}" data-role="${r.key}" onclick="SuperAdminView.selectBridgeRole('${r.key}')" aria-pressed="${this.pendingRole===r.key?'true':'false'}" aria-label="Emular rol ${r.label}">
+        <span class="barita-role-icon">${Icons.get(r.icon,18)}</span>
+        <span class="barita-role-label">${r.label}</span>
+        <span class="barita-role-desc">${r.desc}</span>
+        <span class="barita-role-check">✓ Seleccionado</span>
+      </button>`).join('');
+    const html=`
+      <div class="barita-impersonate-head">
+        <h3>${Icons.get('school',20)} Ingresar a ${this._esc(colegio.nombre)}</h3>
+        <span class="badge ${bloqueado?'badge-danger':'badge-success'}">${bloqueado?'Bloqueado':'Activo'}</span>
+        <span class="text-muted" style="font-size:.75rem">${this._esc(colegio.rbd||'')}</span>
+      </div>
+      <p class="text-muted" style="font-size:.85rem; margin-bottom:1rem">Elige el rol a emular. Podrás cambiarlo dentro del colegio sin volver a Super Admin (selector en el header).</p>
+      <div class="barita-role-grid" role="group" aria-label="Selector de rol a emular">${grid}</div>
+      <div style="margin-top:1rem; display:flex; align-items:center; gap:.5rem; background:var(--bg-hover); border:1px solid var(--border-card); padding:.6rem .8rem; border-radius:var(--radius-md)">
+        <span style="font-size:.8rem; font-weight:600; color:var(--text-secondary)">Rol seleccionado:</span>
+        <strong id="bridge-role-label" style="color:var(--primary); font-size:.85rem">${roles.find(x=>x.key===this.pendingRole)?.label}</strong>
+        <select class="form-control" style="margin-left:auto; width:auto; padding:.25rem .5rem; font-weight:700; color:var(--primary); background:transparent; border:none; cursor:pointer" aria-label="Cambiar rol rápido" onchange="SuperAdminView.selectBridgeRole(this.value)">${roles.map(r=>`<option value="${r.key}" ${r.key===this.pendingRole?'selected':''}>${r.label}</option>`).join('')}</select>
+      </div>`;
+    const footer=`
+      <button class="btn btn-secondary" onclick="App.closeModal()" autofocus>Cancelar</button>
+      <button class="btn btn-primary" onclick="SuperAdminView.confirmBridgeIngress()" style="font-weight:700">Ingresar como <span id="bridge-cta-role">${roles.find(x=>x.key===this.pendingRole)?.label}</span> →</button>`;
+    App.openModal('Ingresar a colegio', html, footer, { ariaLabel:'Selector de rol a emular'});
+  },
+  selectBridgeRole(role){
+    this.pendingRole = role;
+    document.querySelectorAll('.barita-role-card').forEach(el=>{
+      const is=el.dataset.role===role;
+      el.classList.toggle('is-selected',is);
+      el.setAttribute('aria-pressed', is?'true':'false');
+    });
+    const label = document.querySelector(`.barita-role-card[data-role="${role}"] .barita-role-label`)?.textContent || role;
+    const a=document.getElementById('bridge-role-label'); if(a) a.textContent=label;
+    const b=document.getElementById('bridge-cta-role'); if(b) b.textContent=label;
+    const sel=document.querySelector('[aria-label="Cambiar rol rápido"]'); if(sel) sel.value=role;
+  },
+  async confirmBridgeIngress(){
+    const schoolId = this.pendingSchoolId; const role = this.pendingRole;
+    if(!schoolId) return;
+    App.closeModal();
+    if(Storage.setActiveSchool) await Storage.setActiveSchool(schoolId);
+    else { localStorage.setItem('barita_active_school', schoolId); Storage.activeSchool=schoolId; }
+    const profile = { email: Auth.currentUser.email, nombres: Auth.userProfile?.nombres||'Super', apellidos: Auth.userProfile?.apellidos||'Admin', colegio_id: schoolId, colegioId: schoolId };
+    await this.impersonateFromRoleSwitcher(Auth.currentUser.uid, role, profile);
   },
 
   async impersonateFromRoleSwitcher(uid, role, profile) {
+    const allowed = ['admin','coordinadora','directora','profesor','utp','pie','convivencia','inspectoria','finanzas'];
+    if(role === 'superadmin'){ App.showToast('No se puede emular superadmin','warning'); return; }
+    if(!allowed.includes(role)){ App.showToast('Rol no permitido para emulación','danger'); return; }
+    if (Auth.currentRole !== 'superadmin' && !sessionStorage.getItem('superadmin_original')) {
+      App.showToast('Solo SUPER_ADMIN puede suplantar','danger'); return;
+    }
+    // Determinar colegio objetivo (el seleccionado en Ingresar o el actual)
+    const targetColegio = (profile && (profile.colegio_id||profile.colegioId)) || this.pendingSchoolId || Storage.activeSchool || 'demo';
     if (!sessionStorage.getItem('superadmin_original')) {
       sessionStorage.setItem('superadmin_original', JSON.stringify({
         uid: Auth.currentUser.uid,
         role: Auth.currentRole,
-        profile: Auth.userProfile
+        profile: Auth.userProfile,
+        colegio_id: Storage.activeSchool,
+        ts: Date.now()
       }));
     }
+    const enrichedProfile = { ...profile, colegio_id: targetColegio, colegioId: targetColegio };
     Auth.currentRole = role;
-    Auth.userProfile = profile;
+    Auth.userProfile = enrichedProfile;
     Auth.currentUser = { uid, email: profile.email };
     App.showToast(`Simulando rol: ${role}`, 'info');
     if (typeof Auth !== 'undefined' && Auth.checkImpersonationBanner) Auth.checkImpersonationBanner();
@@ -136,9 +215,14 @@ const SuperAdminView = {
     }
     try {
       const data = JSON.parse(original);
+      if(data.role !== 'superadmin'){ sessionStorage.removeItem('superadmin_original'); App.showToast('Sesión corrupta','danger'); return; }
+      if(data.ts && (Date.now() - data.ts > 8*60*60*1000)){ sessionStorage.removeItem('superadmin_original'); App.showToast('Sesión expirada','warning'); return; }
       Auth.currentRole = data.role;
       Auth.userProfile = data.profile;
       Auth.currentUser = { uid: data.uid, email: data.profile.email };
+      if(data.colegio_id && typeof Storage!=='undefined' && Storage.setActiveSchool){
+        try{ Storage.activeSchool = data.colegio_id; localStorage.setItem('barita_active_school', data.colegio_id); }catch(_e){}
+      }
     } catch (e) {
       App.showToast('Error al restaurar sesión', 'danger');
       return;

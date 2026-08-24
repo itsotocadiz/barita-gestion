@@ -226,6 +226,19 @@ const Storage = {
 
   async setSchool(schoolId) {
     let targetSchool = schoolId;
+    // Si está impersonando, bloquear cambio de colegio fuera del colegio emulado
+    try{
+      const origRaw = (typeof sessionStorage!=='undefined') ? sessionStorage.getItem('superadmin_original') : null;
+      if(origRaw && typeof Auth!=='undefined' && Auth.currentRole !== 'superadmin' && Auth.userProfile){
+        const impersonatedColegio = (Auth.userProfile.colegio_id || Auth.userProfile.colegioId || '').toString().trim() || (this.activeSchool||'').toString().trim();
+        if(impersonatedColegio && schoolId !== impersonatedColegio){
+          console.warn('Bloqueo tenant hopping en modo emulación:', schoolId, '->', impersonatedColegio);
+          App.showToast('Colegio bloqueado en modo emulación','warning');
+          return Promise.resolve();
+        }
+        targetSchool = impersonatedColegio || targetSchool;
+      }
+    }catch(_e){}
     
     // Strict Tenant Isolation: Non-superadmin users are locked to their profile's assigned colegio_id
     if (typeof Auth !== 'undefined' && Auth.currentRole && Auth.currentRole !== 'superadmin' && Auth.userProfile) {
