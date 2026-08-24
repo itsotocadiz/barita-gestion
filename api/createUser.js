@@ -16,6 +16,8 @@ function stripHtml(str) {
 
 export default async function handler(req) {
   const allowedOrigins = [
+    'https://barita-gestion.vercel.app',
+    'https://gestion.barita.cl',
     'https://barita.vercel.app',
     'https://www.barita.cl',
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
