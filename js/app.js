@@ -114,9 +114,8 @@ const App = {
       ? '<span style="background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:700; margin-left:4px;">⚡ MODO PRUEBAS</span>' 
       : '';
 
-    // SuperAdmin School Switcher (only visible for superadmin or real superadmin impersonating in GESTIÓN)
-    const isPostulacionesRoute = (window.location.hash || '').startsWith('#/postulantes') || rawRole.toLowerCase() === 'postulante' || rawRole.toLowerCase() === 'directivo';
-    const isSuperAdmin = (rawRole.toLowerCase() === 'superadmin' || isRealSuperAdmin) && !isPostulacionesRoute;
+    // SuperAdmin School Switcher (Gestión puro)
+    const isSuperAdmin = (rawRole.toLowerCase() === 'superadmin' || isRealSuperAdmin);
     const currentSchool = (typeof Storage !== 'undefined' && Storage.activeSchool) ? Storage.activeSchool : 'terra_di_bimbi';
     const schoolSwitcherHTML = isSuperAdmin ? `
       <div style="background: linear-gradient(135deg, #ede9fe, #e0e7ff); border: 1px solid #a5b4fc; padding: 0.3rem 0.65rem; border-radius: 8px; font-size: 0.8rem; color: #3730a3; display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
@@ -404,12 +403,6 @@ const App = {
     const yearSel = document.getElementById('sidebar-year-select');
     if (yearSel) yearSel.value = Storage.getActiveYear();
     
-    const isPostulacionesRoute = (window.location.hash || '').startsWith('#/postulantes') || 
-                                  view === 'postulantes' || 
-                                  view === 'directivos' ||
-                                  (Auth.currentRole && Auth.currentRole.toLowerCase() === 'postulante') ||
-                                  (Auth.currentRole && Auth.currentRole.toLowerCase() === 'directivo');
-
     const isImpersonating = typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original');
     const isSuperAdminNoImpersonate = Auth.currentRole === 'superadmin' && !isImpersonating;
     
@@ -418,8 +411,7 @@ const App = {
     const isSuperEmail = userEmail === 'itsotocadiz@gmail.com';
     const isSuperAdminReal = isSuperAdminNoImpersonate || (isSuperEmail && !isImpersonating);
 
-    let shouldHideSidebar = isPostulacionesRoute ||
-                              view === 'superadmin' || 
+    let shouldHideSidebar = view === 'superadmin' || 
                               isSuperAdminReal ||
                               !Auth.currentUser;
 
@@ -439,10 +431,6 @@ const App = {
         mainContent.style.marginLeft = '0';
         mainContent.style.width = '100%';
         mainContent.style.maxWidth = '100%';
-      }
-      if (view === 'postulantes') {
-        const overlay = document.getElementById('login-overlay');
-        if (overlay) overlay.style.display = 'none';
       }
     } else {
       if (sidebarEl) sidebarEl.style.display = 'flex';
