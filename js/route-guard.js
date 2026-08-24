@@ -116,21 +116,12 @@ const RouteGuard = (() => {
 
     if (window.ALLOW_ALL_ROLES_FULL_ACCESS) return true;
     
-    // Si la ruta es publica o postulantes (para usuarios no logueados o postulantes), permitir
-    if (route === 'postulantes' || route === 'postulantes/registro' || route === 'postulantes/directivos') return true;
-
-    // Postulante y directivo solo pueden acceder a rutas de postulaciones
-    if (role === 'postulante' || role === 'directivo') {
-      window.location.hash = role === 'postulante' ? '#/postulantes' : '#/postulantes/directivos';
-      return false;
-    }
-
     const userEmail = Auth.currentUser ? ((Auth.currentUser.email || Auth.currentUser.user_metadata?.email || '').trim().toLowerCase()) : '';
     const isSuperEmail = userEmail === 'itsotocadiz@gmail.com';
     const isImpersonating = typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original');
     const isSuperAdminReal = (role === 'superadmin') || (isSuperEmail && !isImpersonating);
 
-    if (isSuperAdminReal && route !== 'superadmin' && !route.startsWith('postulantes')) {
+    if (isSuperAdminReal && route !== 'superadmin') {
       window.location.hash = '#/superadmin';
       return false;
     }

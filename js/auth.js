@@ -98,7 +98,7 @@ const Auth = (() => {
     state.currentUser = null;
     state.currentRole = null;
     state._activeClient = null;
-    if (window.location.hash !== '#/' && !window.location.hash.startsWith('#/postulantes')) {
+    if (window.location.hash !== '#/') {
       window.location.hash = '#/';
     }
     showLogin();
@@ -126,7 +126,6 @@ const Auth = (() => {
     // 2. Borrado explícito de tokens y roles
     try {
       localStorage.removeItem('barita-gestion-auth-token');
-      localStorage.removeItem('barita-postulaciones-auth-token');
       localStorage.removeItem('barita_user_role');
       localStorage.removeItem('barita_pending_role');
     } catch (_e) {}
@@ -179,11 +178,9 @@ const Auth = (() => {
 
     // Mostrar las opciones de la landing principal al cerrar sesión
     const landingOptions = document.getElementById('landing-options-container');
-    if (landingOptions) landingOptions.style.display = 'grid';
+    if (landingOptions) landingOptions.style.display = 'flex';
     const loginFormWrapper = document.getElementById('login-form-container');
     if (loginFormWrapper) loginFormWrapper.style.display = 'none';
-    const postulLoginCard = document.getElementById('postulaciones-login-card');
-    if (postulLoginCard) postulLoginCard.style.display = 'block';
 
     App.removeOfflineBanner && App.removeOfflineBanner();
     const banner = document.getElementById('offline-mode-banner');
@@ -262,10 +259,7 @@ const Auth = (() => {
     showLoadingState('Validando credenciales...', 'Conectando con el servidor seguro de BARITA.');
 
     try {
-      const pending = Auth.pendingRole || localStorage.getItem('barita_pending_role') || '';
-      const isPostRoute = window.location.hash.startsWith('#/postulantes');
-      const system = (pending === 'postulante' || pending === 'directivo' || isPostRoute) ? 'postulaciones' : 'gestion';
-      const client = window.getSupabaseClient(system);
+      const client = window.getSupabaseClient('gestion');
       const { data, error } = await client.auth.signInWithPassword({
         email: email,
         password: password,
@@ -285,9 +279,7 @@ const Auth = (() => {
 
       // Esperar rol antes de decidir hash (fix UTP/PIE/Dirección)
       await fetchUserRole(data.user.id);
-      // Limpiar pendingRole si no es postulaciones
-      const stillIsPostRoute = window.location.hash.startsWith('#/postulantes');
-      if (!stillIsPostRoute) { localStorage.removeItem('barita_pending_role'); state.pendingRole = null; }
+      try { localStorage.removeItem('barita_pending_role'); state.pendingRole = null; } catch(_e){}
 
       // Sincronización inmediata de interfaz
       const overlay = document.getElementById('login-overlay');
@@ -296,8 +288,6 @@ const Auth = (() => {
       const currentHash = window.location.hash || '';
       let targetDefault = '#/dashboard';
       if (state.currentRole === 'superadmin') targetDefault = '#/superadmin';
-      else if (state.currentRole === 'postulante') targetDefault = '#/postulantes';
-      else if (state.currentRole === 'directivo') targetDefault = '#/postulantes/directivos';
 
       if (currentHash === '' || currentHash === '#/' || currentHash.includes('login') || (state.currentRole === 'superadmin' && !currentHash.startsWith('#/superadmin'))) {
         window.location.hash = targetDefault;

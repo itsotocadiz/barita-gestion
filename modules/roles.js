@@ -64,16 +64,6 @@ window.ROLES = {
     label: 'Coordinadora',
     defaultPage: '#/dashboard',
     menu: [...STAFF_MENU]
-  },
-  postulante: {
-    label: 'Postulante',
-    defaultPage: '#/postulantes',
-    menu: []
-  },
-  directivo: {
-    label: 'Directivo',
-    defaultPage: '#/postulantes/directivos',
-    menu: []
   }
 };
 
@@ -90,7 +80,6 @@ window.ROUTES = {
   protocolos: '#/protocolos',
   casos: '#/casos',
   consultas: '#/consultas',
-  postulantes: '#/postulantes',
   asistencia: '#/asistencia',
   documentos: '#/documentos',
   psicosocial: '#/psicosocial',
@@ -110,12 +99,12 @@ window.BaritaHelpers = {
     return window.ROLES[role] || window.ROLES.coordinadora;
   },
   isPublicRoute(view) {
-    return view === 'postulantes' || view === 'directivos';
+    return false;
   },
   isSuperadminRoute(view) {
     return view === 'superadmin';
   },
   shouldHideSidebarForRole(role) {
-    return role === 'postulante' || role === 'directivo' || role === 'superadmin';
+    return role === 'superadmin';
   }
 };
