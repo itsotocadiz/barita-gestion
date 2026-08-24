@@ -95,13 +95,13 @@
           Talento Potenciado por IA</p>
       </div>
 
-      <!-- Contenedor 2 Vías: BARITA + POSTULACIONES -->
+      <!-- Landing Gestión — 1 vía centrada -->
       <div id="landing-options-container"
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 420px)); gap: 1.5rem;">
+        style="display: flex; justify-content: center; gap: 1.5rem;">
 
         <!-- Vía 1: BARITA Gestión -->
         <div class="card" id="card-landing-ingreso"
-          style="padding: 2rem; text-align: center; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid var(--primary); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); background: white; cursor: pointer;"
+          style="padding: 2rem; text-align: center; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid var(--primary); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); background: white; cursor: pointer; max-width: 420px; width: 100%;"
           onclick="if (typeof Auth !== 'undefined' && Auth.showLoginForm) Auth.showLoginForm(); else { document.getElementById('login-form-container').style.display='block'; document.getElementById('landing-options-container').style.display='none'; }">
           <div>
             <div style="margin-bottom: 0.75rem; color: var(--primary); display: flex; justify-content: center; align-items: center; height: 3rem;">
