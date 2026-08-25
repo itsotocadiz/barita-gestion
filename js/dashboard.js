@@ -1342,20 +1342,17 @@ const DashboardView = (() => {
           for (const assocEstId of allEstIds) {
             const est = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => String(e.id)===String(assocEstId));
             if (!est) continue;
-            const casos = (Storage.getCasos ? Storage.getCasos() : []);
             const tipo = caso.tipo || 'seguimiento';
-            const quedanActivos = casos.filter(c => c.estado !== 'cerrado' && String(c.id)!==String(casoId) && (String(c.estudianteId)===String(assocEstId) || String(c.estudiante_id)===String(assocEstId) || String(c.estudiante_id_ref)===String(assocEstId) || (Array.isArray(c.estudiantesInvolucrados) && c.estudiantesInvolucrados.map(String).includes(String(assocEstId)))) && String(c.tipo)===String(tipo)).length > 0;
-            if (!quedanActivos) {
-              if (tipo === 'seguimiento') est.enSeguimiento = false;
-              if (tipo === 'complejo') est.esComplejo = false;
-              if (tipo === 'apoyo_psicosocial') est.requiereApoyoPsicosocial = false;
-              if (tipo === 'plan_utp') est.planUtpActivo = false;
-              if (tipo === 'medidas_pie') est.medidasPie = false;
-              if (!est.enSeguimiento && !est.compromisoConductualActivo) {
-                est.fechaProximoSeguimiento = null; est.fechaProximo = null;
-              }
-              await Storage.saveEstudiante(est, true);
+            // Cierre explícito: desmarca siempre (no espera a que no queden activos)
+            if (tipo === 'seguimiento') est.enSeguimiento = false;
+            if (tipo === 'complejo') est.esComplejo = false;
+            if (tipo === 'apoyo_psicosocial') est.requiereApoyoPsicosocial = false;
+            if (tipo === 'plan_utp') est.planUtpActivo = false;
+            if (tipo === 'medidas_pie') est.medidasPie = false;
+            if (!est.enSeguimiento && !est.compromisoConductualActivo) {
+              est.fechaProximoSeguimiento = null; est.fechaProximo = null;
             }
+            await Storage.saveEstudiante(est, true);
           }
         }
       } else if (accion === 'cerrar_compromiso') {
