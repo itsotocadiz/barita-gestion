@@ -950,6 +950,9 @@ const Auth = (() => {
     }
 
     App.showToast(`Simulando rol: ${targetRole}`, 'info');
+    try { localStorage.setItem('barita_user_role', targetRole); } catch(_e){}
+    // FIX: forzar re-render aunque hash ya sea #/dashboard (evita _lastRouteHash duplicado tras Storage.setActiveSchool)
+    if (typeof App !== 'undefined') App._lastRouteHash = null;
 
     if (targetRole === 'postulante') {
       window.location.hash = '#/postulantes';
@@ -959,6 +962,8 @@ const Auth = (() => {
 
     checkImpersonationBanner();
     showApp();
+    // fallback por si handleRoute fue ignorado como duplicado
+    setTimeout(()=>{ if(typeof App!=='undefined' && App.handleRoute) { App._lastRouteHash=null; App.handleRoute(); } }, 50);
   }
 
   function stopImpersonating() {

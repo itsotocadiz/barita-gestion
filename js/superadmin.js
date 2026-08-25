@@ -189,10 +189,14 @@ const SuperAdminView = {
     if (typeof Storage !== 'undefined' && Storage.setActiveSchool && Storage.activeSchool !== targetColegio) {
       try { await Storage.setActiveSchool(targetColegio); } catch (_e) { try { localStorage.setItem('barita_active_school', targetColegio); Storage.activeSchool = targetColegio; } catch(__e){} }
     }
+    try { localStorage.setItem('barita_user_role', role); } catch(_e){}
+    // FIX: forzar re-render dashboard aunque hash ya sea #/dashboard
+    if (typeof App !== 'undefined') App._lastRouteHash = null;
     App.showToast(`Simulando rol: ${role}`, 'info');
     if (typeof Auth !== 'undefined' && Auth.checkImpersonationBanner) Auth.checkImpersonationBanner();
     window.location.hash = '#/dashboard';
     this.showAppForImpersonation();
+    setTimeout(()=>{ if(typeof App!=='undefined' && App.handleRoute){ App._lastRouteHash=null; App.handleRoute(); } }, 50);
   },
 
   showAppForImpersonation() {
