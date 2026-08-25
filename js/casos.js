@@ -638,6 +638,19 @@ const CasosView = {
             ${DATA.accionesPrevias.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('')}
           </select>
         </div>
+        <div class="form-group mb-3">
+          <label class="form-label">Detalle del seguimiento *</label>
+          <textarea id="seg-texto" class="form-control" rows="3" placeholder="Describe la acción realizada..." required></textarea>
+        </div>
+        <div class="form-group mb-3">
+          <label class="form-label">Fecha Próximo Seguimiento</label>
+          <input type="date" id="seg-proximo" class="form-control">
+          <small class="text-muted">Establece alerta para el próximo seguimiento en dashboard.</small>
+        </div>
+        <div class="form-group mb-3">
+          <label class="form-label">Archivo adjunto</label>
+          <input type="file" id="seg-archivo" class="form-control" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+        </div>
       </form>
     `;
     
@@ -649,7 +662,7 @@ const CasosView = {
     App.openModal('Añadir Seguimiento', html, footer);
   },
 
-  guardarSeguimiento(casoId) {
+  async guardarSeguimiento(casoId) {
     const fechaInput = document.getElementById('seg-fecha').value;
     let fechaFormat = new Date().toISOString();
     if (fechaInput) {
@@ -657,45 +670,67 @@ const CasosView = {
       const now = new Date();
       fechaFormat = new Date(parts[0], parts[1] - 1, parts[2], now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
     }
-
+    const textoVal = (document.getElementById('seg-texto')?.value || '').trim();
+    const proximoVal = document.getElementById('seg-proximo')?.value || null;
+    const fileInput = document.getElementById('seg-archivo');
+    if (!textoVal) { App.showToast('Ingresa detalle del seguimiento','warning'); return; }
+    if (!document.getElementById('seg-accion').value) { App.showToast('Selecciona tipo de seguimiento','warning'); return; }
+    let fileUrl = null;
+    if (fileInput && fileInput.files.length>0) {
+      try { if (typeof EstudiantesView !== 'undefined' && EstudiantesView.subirArchivoMock) fileUrl = await EstudiantesView.subirArchivoMock(fileInput.files[0]); } catch(_e){}
+    }
     const loggedUser = Auth.userProfile?.nombres 
       ? `${Auth.userProfile.nombres} ${Auth.userProfile.apellidos || ''}` 
       : (Auth.currentUser?.email || 'Sistema');
-
+    const accionSel = document.getElementById('seg-accion').value;
+    const accionPrevia = DATA.getAccionPrevia(accionSel);
+    const nombreAccion = accionPrevia ? accionPrevia.nombre : 'Seguimiento';
+    const textoFinal = textoVal ? `${nombreAccion}: ${textoVal}` : nombreAccion;
     const seguimiento = {
       id: Date.now().toString(),
-      accionId: document.getElementById('seg-accion').value,
+      accionId: accionSel,
       fecha: fechaFormat,
-      registradoPor: loggedUser
+      fechaProximoSeguimiento: proximoVal,
+      texto: textoFinal,
+      registradoPor: loggedUser,
+      adjunto: fileUrl
     };
     
     const c = Storage.getCasoById(casoId);
     if(c) {
       if (!c.seguimiento) c.seguimiento = [];
-      c.seguimiento.push(seguimiento);
+      c.seguimiento.unshift(seguimiento);
+      if (proximoVal) c.proximoSeguimiento = proximoVal;
       if(c.estado === 'abierto') {
         c.estado = 'en_proceso';
       }
-      Storage.saveCaso(c);
+      await Storage.saveCaso(c);
       
       if (c.estudiantesInvolucrados && c.estudiantesInvolucrados.length > 0) {
-        c.estudiantesInvolucrados.forEach(estId => {
+        for (const estId of c.estudiantesInvolucrados) {
           const est = Storage.getEstudianteById(estId);
           if (est) {
             if (!est.bitacoraSeguimiento) est.bitacoraSeguimiento = [];
-            const accionPrevia = DATA.getAccionPrevia(seguimiento.accionId);
-            const nombreAccion = accionPrevia ? accionPrevia.nombre : 'Acción';
-            est.bitacoraSeguimiento.push({
+            est.bitacoraSeguimiento.unshift({
               id: Date.now().toString() + estId.substring(0,4),
               fecha: fechaFormat,
-              texto: nombreAccion,
+              texto: textoFinal,
+              fechaProximoSeguimiento: proximoVal,
+              adjunto: fileUrl,
               trackingId: est.currentTrackingId,
               registradoPor: loggedUser
             });
-            est.bitacoraSeguimiento.sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
-            Storage.saveEstudiante(est);
+            if (proximoVal) est.fechaProximoSeguimiento = proximoVal;
+            // activa flag según tipo de caso
+            const tipoCaso = c.tipo || 'seguimiento';
+            if (tipoCaso==='seguimiento') est.enSeguimiento=true;
+            else if (tipoCaso==='complejo') est.esComplejo=true;
+            else if (tipoCaso==='apoyo_psicosocial') est.requiereApoyoPsicosocial=true;
+            else if (tipoCaso==='plan_utp') est.planUtpActivo=true;
+            else if (tipoCaso==='medidas_pie' || tipoCaso==='pie') { est.medidasPie=true; est.esEstudiantePIE=true; }
+            await Storage.saveEstudiante(est, true);
           }
-        });
+        }
       }
     }
     
@@ -863,31 +898,48 @@ const CasosView = {
       modal.onclick = (e) => { if (e.target === modal) close(); };
       document.addEventListener('keydown', function esc(e){ if (e.key === 'Escape'){ close(); document.removeEventListener('keydown', esc);} });
 
-      modal.querySelector('#cierre-ok').onclick = () => {
+      modal.querySelector('#cierre-ok').onclick = async () => {
         const razon = modal.querySelector('#cierre-razon').value.trim();
         close();
         const c = Storage.getCasoById(casoId);
         if(c) {
           c.estado = 'cerrado';
           if (!c.seguimiento) c.seguimiento = [];
-          c.seguimiento.push({
+          const cierreTexto = `🏁 Cierre del caso${razon ? '\nRazon: ' + razon : ''}`;
+          c.seguimiento.unshift({
             id: Date.now().toString(),
             fecha: new Date().toISOString(),
-            texto: `🏁 Cierre del caso${razon ? '\nRazon: ' + razon : ''}`
+            texto: cierreTexto,
+            registradoPor: Auth.userProfile?.nombres ? `${Auth.userProfile.nombres} ${Auth.userProfile.apellidos||''}` : (Auth.currentUser?.email||'Sistema')
           });
-          Storage.saveCaso(c);
+          if (c.proximoSeguimiento) c.proximoSeguimiento = null;
+          await Storage.saveCaso(c);
 
-          if (c.tipo === 'complejo' && c.estudiantesInvolucrados) {
-            c.estudiantesInvolucrados.forEach(estId => {
+          if (c.estudiantesInvolucrados) {
+            for (const estId of c.estudiantesInvolucrados) {
               const est = Storage.getEstudianteById(estId);
-              if (est && est.esComplejo) {
-                est.esComplejo = false;
-                Storage.saveEstudiante(est);
-              }
-            });
+              if (!est) continue;
+              if (!est.bitacoraSeguimiento) est.bitacoraSeguimiento = [];
+              est.bitacoraSeguimiento.unshift({
+                id: Date.now().toString()+estId.substring(0,4),
+                fecha: new Date().toISOString(),
+                texto: cierreTexto,
+                registradoPor: Auth.userProfile?.nombres ? `${Auth.userProfile.nombres} ${Auth.userProfile.apellidos||''}` : (Auth.currentUser?.email||'Sistema')
+              });
+              // Desmarcar check según tipo (para todos)
+              const tipo = c.tipo || 'seguimiento';
+              if (tipo==='seguimiento') est.enSeguimiento=false;
+              else if (tipo==='complejo') est.esComplejo=false;
+              else if (tipo==='apoyo_psicosocial') est.requiereApoyoPsicosocial=false;
+              else if (tipo==='plan_utp') est.planUtpActivo=false;
+              else if (tipo==='medidas_pie' || tipo==='pie') { est.medidasPie=false; est.esEstudiantePIE=false; }
+              else { est.enSeguimiento=false; }
+              if (est.fechaProximoSeguimiento) est.fechaProximoSeguimiento = null;
+              await Storage.saveEstudiante(est, true);
+            }
           }
 
-          App.showToast('Caso cerrado', 'success');
+          App.showToast('Caso cerrado — bitácora actualizada y seguimiento desmarcado', 'success');
           App.updateBadges();
           this.renderDetalle(document.getElementById('app-content'), casoId);
         }

@@ -1652,7 +1652,9 @@ Object.assign(Storage, {
       tipo: caso.tipo || 'seguimiento',
       fecha: caso.fecha || new Date().toISOString(),
       creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
-      seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : []
+      seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : [],
+      proximo_seguimiento: caso.proximoSeguimiento || caso.proximo_seguimiento || caso.fechaProximoSeguimiento || null,
+      fecha_proximo_seguimiento: caso.fechaProximoSeguimiento || caso.proximoSeguimiento || caso.proximo_seguimiento || null
     };
 
     try {
