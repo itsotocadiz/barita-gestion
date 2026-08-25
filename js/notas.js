@@ -557,9 +557,9 @@ var NotasView = (() => {
     const gruposActivos = grupos.filter(g => g.condicion());
 
     const gruposHTML = gruposActivos.map(g => `
-      <label style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.55rem; background: var(--bg-card); border-radius: 9999px; border: 1px solid var(--border-card); cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--text-primary);">
+      <label title="${g.label}" style="display: inline-flex; align-items: center; justify-content:center; padding: 0.35rem 0.5rem; background: var(--bg-card); border-radius: 9999px; border: 1px solid var(--border-card); cursor: pointer; font-size: 0.85rem; color: var(--text-primary); min-width:32px;" aria-label="${g.label}">
         <input type="checkbox" name="destinatario_check" value="${g.id}|${g.label}" style="width: 13px; height: 13px; accent-color: var(--primary);">
-        <span style="display: inline-flex; align-items: center; gap: 0.2rem;">${g.icon} ${g.label}</span>
+        <span style="display:inline-flex;">${g.icon}</span>
       </label>
     `).join('');
 
@@ -590,8 +590,8 @@ var NotasView = (() => {
 
     return `
       <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.2rem 0;">A. Grupos por Rol</div>
-      <div style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem;">${gruposHTML}</div>
-      <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.5rem 0 0.2rem 0;">B. Persona específica</div>
+      <div style="display:flex; flex-wrap:nowrap; gap:0.3rem; overflow-x:auto; padding-bottom:2px; margin-bottom:0.35rem;">${gruposHTML}</div>
+      <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.35rem 0 0.2rem 0;">B. Persona específica</div>
       <input type="text" id="nota-buscador" placeholder="🔍 Escribe nombre..." oninput="NotasView.filtrarDestinatarios(this.value)" style="width:100%; padding:0.45rem 0.6rem; border:1px solid var(--border-card); border-radius:8px; font-size:0.83rem; margin-bottom:0.4rem;">
       <div id="lista-usuarios-filtrada" style="display:flex; flex-direction:column; gap:0.3rem; max-height:110px; overflow-y:auto; padding-right:2px;">
         ${usuariosHTML || '<small style="color:#94a3b8; font-size:0.78rem; text-align:center; padding:0.5rem;">Sin funcionarios en este colegio</small>'}
