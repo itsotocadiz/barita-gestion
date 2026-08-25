@@ -1229,15 +1229,20 @@ const DashboardView = (() => {
             caso.proximoSeguimiento = proximaFecha;
             caso.fechaProximoSeguimiento = proximaFecha;
 
-            const payload = JSON.parse(JSON.stringify(caso));
-            if (window.Storage && window.Storage.injectColegioId) window.Storage.injectColegioId(payload);
-            // Sanitizar camelCase
-            delete payload.colegioId;
-            delete payload.estudianteId;
-            delete payload.fechaProximoSeguimiento;
-            delete payload.proximoSeguimiento;
-
-            const { error } = await client.from('casos').upsert(payload);
+            // FIX: payload limpio solo columnas reales (evita 'curso' schema cache)
+            const cleanPayload = {
+              id: caso.id,
+              colegio_id: caso.colegio_id || caso.colegioId || (typeof Storage!=='undefined'?Storage.activeSchool:'demo'),
+              estudiante_id: caso.estudiante_id || caso.estudianteId || caso.estudiante_id_ref || null,
+              titulo: caso.titulo || '',
+              descripcion: caso.descripcion || '',
+              estado: caso.estado || 'en_proceso',
+              tipo: caso.tipo || 'seguimiento',
+              fecha: caso.fecha || new Date().toISOString(),
+              creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
+              seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : []
+            };
+            const { error } = await client.from('casos').upsert(cleanPayload);
             if (error) throw error;
 
             // Sincronizar fecha y bandera de seguimiento en el estudiante asociado
@@ -1291,14 +1296,20 @@ const DashboardView = (() => {
         const caso = (Storage.getCasos ? Storage.getCasos() : []).find(c => c.id === casoId);
         if (caso) {
           caso.estado = 'cerrado';
-          const payload = JSON.parse(JSON.stringify(caso));
-          if (window.Storage && window.Storage.injectColegioId) window.Storage.injectColegioId(payload);
-          delete payload.colegioId;
-          delete payload.estudianteId;
-          delete payload.fechaProximoSeguimiento;
-          delete payload.proximoSeguimiento;
-
-          const { error } = await client.from('casos').upsert(payload);
+          // FIX: payload limpio solo columnas reales de public.casos (evita 'curso' y otros no existentes)
+          const cleanPayload = {
+            id: caso.id,
+            colegio_id: caso.colegio_id || caso.colegioId || (typeof Storage!=='undefined'?Storage.activeSchool:'demo'),
+            estudiante_id: caso.estudiante_id || caso.estudianteId || caso.estudiante_id_ref || null,
+            titulo: caso.titulo || '',
+            descripcion: caso.descripcion || '',
+            estado: caso.estado || 'cerrado',
+            tipo: caso.tipo || 'seguimiento',
+            fecha: caso.fecha || new Date().toISOString(),
+            creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
+            seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : []
+          };
+          const { error } = await client.from('casos').upsert(cleanPayload);
           if (error) throw error;
 
           // También actualizar el estudiante asociado para quitar la bandera y desactivar alarmas
