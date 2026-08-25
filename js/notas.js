@@ -304,7 +304,7 @@ var NotasView = (() => {
                   </div>
                 </div>
                 
-                <div id="container-destinatarios-multiselect" style="max-height: 140px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.5rem; background: #f8fafc; display: flex; flex-direction: column; gap: 0.35rem;">
+                <div id="container-destinatarios-multiselect" style="max-height: 210px; overflow-y: auto; border: 1px solid var(--border-card); border-radius: 8px; padding: 0.5rem; background: var(--bg-hover); display: flex; flex-direction: column; gap: 0.35rem;">
                   ${getMultiSelectDestinatariosHTML()}
                 </div>
                 <small style="display: block; margin-top: 0.25rem; color: #64748b; font-size: 0.78rem;">
@@ -557,9 +557,9 @@ var NotasView = (() => {
     const gruposActivos = grupos.filter(g => g.condicion());
 
     const gruposHTML = gruposActivos.map(g => `
-      <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem; background: white; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; font-size: 0.83rem; font-weight: 600; color: #1e293b;">
-        <input type="checkbox" name="destinatario_check" value="${g.id}|${g.label}" style="width: 15px; height: 15px; accent-color: #2563eb;">
-        <span style="display: inline-flex; align-items: center; gap: 0.25rem;">${g.icon} ${g.label}</span>
+      <label style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.55rem; background: var(--bg-card); border-radius: 9999px; border: 1px solid var(--border-card); cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--text-primary);">
+        <input type="checkbox" name="destinatario_check" value="${g.id}|${g.label}" style="width: 13px; height: 13px; accent-color: var(--primary);">
+        <span style="display: inline-flex; align-items: center; gap: 0.2rem;">${g.icon} ${g.label}</span>
       </label>
     `).join('');
 
@@ -589,16 +589,26 @@ var NotasView = (() => {
     }).join('');
 
     return `
-      <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.2rem 0;">A. Grupos Colectivos / Por Rol</div>
-      ${gruposHTML}
-      <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.5rem 0 0.2rem 0;">B. Individual / Específico por Funcionario</div>
-      ${usuariosHTML}
+      <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.2rem 0;">A. Grupos por Rol</div>
+      <div style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem;">${gruposHTML}</div>
+      <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.5rem 0 0.2rem 0;">B. Persona específica</div>
+      <input type="text" id="nota-buscador" placeholder="🔍 Escribe nombre..." oninput="NotasView.filtrarDestinatarios(this.value)" style="width:100%; padding:0.45rem 0.6rem; border:1px solid var(--border-card); border-radius:8px; font-size:0.83rem; margin-bottom:0.4rem;">
+      <div id="lista-usuarios-filtrada" style="display:flex; flex-direction:column; gap:0.3rem; max-height:110px; overflow-y:auto; padding-right:2px;">
+        ${usuariosHTML || '<small style="color:#94a3b8; font-size:0.78rem; text-align:center; padding:0.5rem;">Sin funcionarios en este colegio</small>'}
+      </div>
     `;
   }
 
   function toggleSelectAllDestinatarios(selectAll) {
     const checkboxes = document.querySelectorAll('#container-destinatarios-multiselect input[type="checkbox"]');
     checkboxes.forEach(cb => { cb.checked = !!selectAll; });
+  }
+  function filtrarDestinatarios(q) {
+    const term = (q||'').toLowerCase().trim();
+    document.querySelectorAll('#lista-usuarios-filtrada label').forEach(lb=>{
+      const txt = lb.textContent.toLowerCase();
+      lb.style.display = !term || txt.includes(term) ? 'flex' : 'none';
+    });
   }
 
   // Visibilidad Solo para mí / Compartida
@@ -1374,7 +1384,8 @@ var NotasView = (() => {
     openRevisarNotaModal,
     closeRevisarNotaModal,
     toggleSelectAllDestinatarios,
-    setVisibilidadNota
+    setVisibilidadNota,
+    filtrarDestinatarios
   };
 })();
 
