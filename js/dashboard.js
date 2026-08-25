@@ -1276,7 +1276,18 @@ const DashboardView = (() => {
           }
         }
       } else if (accion === 'cerrar_caso') {
-        // Cerrar Caso
+        // Cerrar Caso - si viene de alerta directa de estudiante (est_...), cerrar bandera del estudiante
+        if (casoId && String(casoId).startsWith('est_')) {
+          const estDirect = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => e.id === estId);
+          if (estDirect) {
+            const tipo = 'seguimiento';
+            estDirect.enSeguimiento = false; estDirect.esComplejo = false; estDirect.requiereApoyoPsicosocial = false; estDirect.planUtpActivo = false; estDirect.medidasPie = false; estDirect.esEstudiantePIE = false;
+            estDirect.fechaProximoSeguimiento = null; estDirect.fechaProximo = null;
+            if (!Array.isArray(estDirect.bitacoraSeguimiento)) estDirect.bitacoraSeguimiento = [];
+            estDirect.bitacoraSeguimiento.unshift({ id: Date.now().toString(), fecha: new Date().toISOString(), texto: `🏁 Seguimiento cerrado desde Dashboard${comentario ? ': '+comentario : ''}`, registradoPor: (Auth.currentUser ? (Auth.currentUser.email||'Sistema') : 'Sistema') });
+            await Storage.saveEstudiante(estDirect, true);
+          }
+        }
         const caso = (Storage.getCasos ? Storage.getCasos() : []).find(c => c.id === casoId);
         if (caso) {
           caso.estado = 'cerrado';
@@ -1378,8 +1389,9 @@ const DashboardView = (() => {
         location.reload();
       }
     } catch (e) {
-      console.error(e);
-      App.showToast('No se pudo guardar la acción.', 'danger');
+      console.error('guardarQuickSeguimiento error:', e);
+      const msg = (e && e.message) ? e.message : (e && e.error_description) ? e.error_description : String(e);
+      App.showToast('No se pudo guardar la acción: ' + msg.substring(0,120), 'danger');
     }
   }
 
