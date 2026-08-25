@@ -557,9 +557,9 @@ var NotasView = (() => {
     const gruposActivos = grupos.filter(g => g.condicion());
 
     const gruposHTML = gruposActivos.map(g => `
-      <label title="${g.label}" style="display: inline-flex; align-items: center; justify-content:center; padding: 0.35rem 0.5rem; background: var(--bg-card); border-radius: 9999px; border: 1px solid var(--border-card); cursor: pointer; font-size: 0.85rem; color: var(--text-primary); min-width:32px;" aria-label="${g.label}">
-        <input type="checkbox" name="destinatario_check" value="${g.id}|${g.label}" style="width: 13px; height: 13px; accent-color: var(--primary);">
-        <span style="display:inline-flex;">${g.icon}</span>
+      <label title="${g.label}" style="display: inline-flex; align-items: center; justify-content:center; gap:0.25rem; padding: 0.35rem 0.6rem; background: var(--bg-card); border-radius: 9999px; border: 1px solid var(--border-card); cursor: pointer; font-size: 0.85rem; color: var(--text-primary); min-width:36px; height:32px; flex-shrink:0; overflow:visible; line-height:1;" aria-label="${g.label}">
+        <input type="checkbox" name="destinatario_check" value="${g.id}|${g.label}" style="width: 13px; height: 13px; accent-color: var(--primary); flex-shrink:0;">
+        <span style="display:inline-flex; align-items:center; line-height:1;">${g.icon}</span>
       </label>
     `).join('');
 
@@ -581,7 +581,7 @@ var NotasView = (() => {
       const r = (u.role || u.rol || 'staff').toLowerCase();
       const roleLabel = roleMasks[r] || r.toUpperCase();
       return `
-        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem; background: white; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; font-size: 0.83rem; color: #334155;">
+        <label style="display: none; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem; background: white; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; font-size: 0.83rem; color: #334155;">
           <input type="checkbox" name="destinatario_check" value="${u.email || u.id}|${nombre}" style="width: 15px; height: 15px; accent-color: #2563eb;">
           <span>👤 <strong>${nombre}</strong> <small style="color:#64748b;">(${roleLabel})</small></span>
         </label>
@@ -590,10 +590,10 @@ var NotasView = (() => {
 
     return `
       <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.2rem 0;">A. Grupos por Rol</div>
-      <div style="display:flex; flex-wrap:nowrap; gap:0.3rem; overflow-x:auto; padding-bottom:2px; margin-bottom:0.35rem;">${gruposHTML}</div>
+      <div style="display:flex; gap:0.3rem; flex-wrap:nowrap; overflow-x:auto; overflow-y:visible; align-items:center; min-height:40px; padding:2px 0; margin-bottom:0.35rem;">${gruposHTML}</div>
       <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.35rem 0 0.2rem 0;">B. Persona específica</div>
       <input type="text" id="nota-buscador" placeholder="🔍 Escribe nombre..." oninput="NotasView.filtrarDestinatarios(this.value)" style="width:100%; padding:0.45rem 0.6rem; border:1px solid var(--border-card); border-radius:8px; font-size:0.83rem; margin-bottom:0.4rem;">
-      <div id="lista-usuarios-filtrada" style="display:flex; flex-direction:column; gap:0.3rem; max-height:110px; overflow-y:auto; padding-right:2px;">
+      <div id="lista-usuarios-filtrada" style="display:flex; flex-direction:column; gap:0.3rem; max-height:110px; overflow-y:auto; padding-right:2px; min-height:0;">
         ${usuariosHTML || '<small style="color:#94a3b8; font-size:0.78rem; text-align:center; padding:0.5rem;">Sin funcionarios en este colegio</small>'}
       </div>
     `;
@@ -606,13 +606,13 @@ var NotasView = (() => {
   function filtrarDestinatarios(q) {
     const term = (q||'').toLowerCase().trim();
     let visible=0;
+    const showAll = false; // lista vacía al inicio, solo muestra al escribir
     document.querySelectorAll('#lista-usuarios-filtrada label').forEach(lb=>{
       const txt = lb.textContent.toLowerCase();
-      const show = !term || txt.includes(term);
+      const show = term.length>=2 && txt.includes(term);
       lb.style.display = show ? 'flex' : 'none';
       if(show) visible++;
     });
-    // muestra hint si no hay resultados
     let hint=document.getElementById('nota-busqueda-hint');
     if(!hint){
       const cont=document.getElementById('lista-usuarios-filtrada');
@@ -620,13 +620,13 @@ var NotasView = (() => {
         hint=document.createElement('small');
         hint.id='nota-busqueda-hint';
         hint.style.cssText='color:#94a3b8;font-size:0.78rem;text-align:center;padding:0.4rem;display:none;';
-        hint.textContent='Sin resultados para "'+q+'"';
         cont.parentNode.insertBefore(hint, cont.nextSibling);
       }
     }
     if(hint){
-      hint.style.display = term && visible===0 ? 'block' : 'none';
-      if(term && visible===0) hint.textContent='Sin resultados para "'+q+'"';
+      if(!term) { hint.style.display='none'; }
+      else if(visible===0) { hint.style.display='block'; hint.textContent='Sin resultados para "'+q+'"'; }
+      else hint.style.display='none';
     }
   }
 
