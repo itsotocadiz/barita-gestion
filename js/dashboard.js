@@ -31,9 +31,12 @@ const DashboardView = (() => {
     casos.forEach(caso => {
       if (!caso || caso.estado === 'cerrado') return;
 
-      // Omitir si ya fue marcado como leído por el rol actual
-      const yaLeido = Array.isArray(caso.seguimiento) && caso.seguimiento.some(s => s && s.is_seen_confirm && String(s.role).toLowerCase().trim() === cleanRole);
-      if (yaLeido) return;
+      // Omitir si ya fue marcado como leído por el rol actual (local por rol, no bitácora)
+      const primerEstIdTmp = (caso.estudiantesInvolucrados && caso.estudiantesInvolucrados[0]) ? caso.estudiantesInvolucrados[0] : (caso.estudianteId || caso.estudiante_id || '');
+      const keyTmp = `barita_alerta_leida_${caso.id}_${primerEstIdTmp}_${cleanRole}`;
+      let yaLeidoLocal = false; try{ yaLeidoLocal = localStorage.getItem(keyTmp)==='true'; }catch(_e){}
+      const yaLeidoLegacy = Array.isArray(caso.seguimiento) && caso.seguimiento.some(s => s && s.is_seen_confirm && String(s.role).toLowerCase().trim() === cleanRole);
+      if (yaLeidoLocal || yaLeidoLegacy) return;
 
       let tipoKey = caso.tipo || 'seguimiento';
       if (!alertasPorCategoria[tipoKey]) tipoKey = 'seguimiento';
@@ -44,6 +47,7 @@ const DashboardView = (() => {
       const fechasAProcesar = [];
 
       seguimientos.forEach(seg => {
+        if (seg && seg.is_seen_confirm) return;
         const rawDate = seg.fechaProximoSeguimiento || seg.fechaProximo || caso.proximoSeguimiento || caso.fechaProximoSeguimiento || seg.fecha;
         if (rawDate) {
           fechasAProcesar.push({
@@ -141,9 +145,11 @@ const DashboardView = (() => {
     estudiantes.forEach(est => {
       if (!est) return;
       
-      // Omitir si ya fue marcado como leído por el rol actual
-      const yaLeido = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b => b && b.is_seen_confirm && String(b.role).toLowerCase().trim() === cleanRole);
-      if (yaLeido) return;
+      // Omitir si ya fue marcado como leído por el rol actual (local, no bitácora)
+      const keyEst = `barita_alerta_leida_est_${est.id}_${est.id}_${cleanRole}`;
+      let yaLeidoLocalEst = false; try{ yaLeidoLocalEst = localStorage.getItem(keyEst)==='true'; }catch(_e){}
+      const yaLeidoLegacyEst = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b => b && b.is_seen_confirm && String(b.role).toLowerCase().trim() === cleanRole);
+      if (yaLeidoLocalEst || yaLeidoLegacyEst) return;
 
       const categorias = [];
       if (est.enSeguimiento) categorias.push('seguimiento');
@@ -1477,35 +1483,10 @@ const DashboardView = (() => {
       }
     });
 
-    // 2. Guardado en segundo plano asíncrono
+    // 2. Guardado local por rol (no bitácora) - solo quien marca deja de ver
     try {
-      const entry = {
-        id: 'seen_log_' + role + '_' + Date.now(),
-        fecha: new Date().toISOString(),
-        texto: `Leído por el rol ${role}`,
-        registradoPor: role,
-        is_seen_confirm: true,
-        role: role
-      };
-
-      if (casoId && !casoId.startsWith('est_')) {
-        // 1. Marcar en Caso
-        const caso = (Storage.getCasos ? Storage.getCasos() : []).find(c => c.id === casoId);
-        if (caso) {
-          if (!Array.isArray(caso.seguimiento)) caso.seguimiento = [];
-          caso.seguimiento.push(entry);
-          await Storage.saveCaso(caso);
-        }
-      } else if (estudianteId) {
-        // 2. Marcar en Estudiante
-        const est = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => e.id === estudianteId);
-        if (est) {
-          if (!Array.isArray(est.bitacoraSeguimiento)) est.bitacoraSeguimiento = [];
-          est.bitacoraSeguimiento.unshift(entry);
-          await Storage.saveEstudiante(est, true);
-        }
-      }
-
+      const key = `barita_alerta_leida_${casoId||''}_${estudianteId||''}_${role}`;
+      try { localStorage.setItem(key, 'true'); } catch(_e){}
       App.showToast('Alerta marcada como leída.', 'success');
       
       // Recargar la vista del dashboard
