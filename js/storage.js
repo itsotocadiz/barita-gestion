@@ -1652,10 +1652,9 @@ Object.assign(Storage, {
       tipo: caso.tipo || 'seguimiento',
       fecha: caso.fecha || new Date().toISOString(),
       creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
-      seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : [],
-      proximo_seguimiento: caso.proximoSeguimiento || caso.proximo_seguimiento || caso.fechaProximoSeguimiento || null,
-      fecha_proximo_seguimiento: caso.fechaProximoSeguimiento || caso.proximoSeguimiento || caso.proximo_seguimiento || null
+      seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : []
     };
+    // Nota: proximoSeguimiento se guarda en estudiante.metadata.fechaProximoSeguimiento y en seguimiento[].fechaProximoSeguimiento, no en columna caso
 
     try {
       const { error } = await window.getSupabaseClient().from('casos').upsert(cleanPayload);
