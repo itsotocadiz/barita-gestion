@@ -116,14 +116,15 @@ const App = {
 
     // SuperAdmin School Switcher (Gestión puro)
     const isSuperAdmin = (rawRole.toLowerCase() === 'superadmin' || isRealSuperAdmin);
-    const currentSchool = (typeof Storage !== 'undefined' && Storage.activeSchool) ? Storage.activeSchool : 'terra_di_bimbi';
+    const rawSchool = (typeof Storage !== 'undefined' && Storage.activeSchool) ? Storage.activeSchool : 'demo';
+    const currentSchool = rawSchool === 'escuela_demo' ? 'demo' : rawSchool;
     const schoolSwitcherHTML = isSuperAdmin ? `
       <div style="background: linear-gradient(135deg, #ede9fe, #e0e7ff); border: 1px solid #a5b4fc; padding: 0.3rem 0.65rem; border-radius: 8px; font-size: 0.8rem; color: #3730a3; display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
         ${Icons.get('school', 18)}
         <span style="font-weight: 700;">Escuela Activa:</span>
         <select id="global-school-switcher" onchange="App.switchSchoolContext(this.value)" style="background: transparent; border: none; font-weight: 800; color: #4338ca; cursor: pointer; font-size: 0.8rem; padding: 0.15rem 0.25rem;">
           <option value="terra_di_bimbi" ${currentSchool === 'terra_di_bimbi' ? 'selected' : ''}>Terra Di Bimbi</option>
-          <option value="escuela_demo" ${currentSchool === 'escuela_demo' ? 'selected' : ''}>Escuela Demo</option>
+          <option value="demo" ${currentSchool === 'demo' ? 'selected' : ''}>Escuela Demo</option>
         </select>
       </div>
     ` : '';
@@ -170,7 +171,8 @@ const App = {
       // Re-render current route to show data from the new school
       if (this.handleRoute) this.handleRoute(true);
 
-      const schoolLabel = schoolId === 'terra_di_bimbi' ? 'Terra Di Bimbi' : (schoolId === 'escuela_demo' ? 'Escuela Demo' : schoolId);
+      const normId = schoolId === 'escuela_demo' ? 'demo' : schoolId;
+      const schoolLabel = normId === 'terra_di_bimbi' ? 'Terra Di Bimbi' : 'Escuela Demo';
       if (this.showToast) this.showToast(`${Icons.get('school', 16)} Contexto cambiado a: ${schoolLabel}`, 'success');
     } catch (err) {
       console.error('Error al cambiar contexto de escuela:', err);

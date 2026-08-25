@@ -185,6 +185,10 @@ const SuperAdminView = {
     Auth.currentRole = role;
     Auth.userProfile = enrichedProfile;
     Auth.currentUser = { uid, email: profile.email };
+    // FIX: sincronizar Storage para evitar desfase header TERRA vs body DEMO (todos los roles)
+    if (typeof Storage !== 'undefined' && Storage.setActiveSchool && Storage.activeSchool !== targetColegio) {
+      try { await Storage.setActiveSchool(targetColegio); } catch (_e) { try { localStorage.setItem('barita_active_school', targetColegio); Storage.activeSchool = targetColegio; } catch(__e){} }
+    }
     App.showToast(`Simulando rol: ${role}`, 'info');
     if (typeof Auth !== 'undefined' && Auth.checkImpersonationBanner) Auth.checkImpersonationBanner();
     window.location.hash = '#/dashboard';
@@ -306,7 +310,7 @@ const SuperAdminView = {
           ` : ''}
 
           <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-left: 0.5rem;">ROL:</span>
-          <select id="sa-role-switcher" class="form-control" style="width: auto; padding: 0.25rem 0.5rem; font-weight: 800; color: var(--primary); background: transparent; border: none; cursor: pointer;" onchange="SuperAdminView.impersonateFromRoleSwitcher('${Auth.currentUser.uid}', this.value, { email: '${Auth.currentUser.email}', nombres: '${(Auth.userProfile && Auth.userProfile.nombres) || 'Super' }', apellidos: '${(Auth.userProfile && Auth.userProfile.apellidos) || 'Admin'}' })">
+          <select id="sa-role-switcher" class="form-control" style="width: auto; padding: 0.25rem 0.5rem; font-weight: 800; color: var(--primary); background: transparent; border: none; cursor: pointer;" onchange="SuperAdminView.impersonateFromRoleSwitcher('${Auth.currentUser.uid}', this.value, { email: '${Auth.currentUser.email}', nombres: '${(Auth.userProfile && Auth.userProfile.nombres) || 'Super' }', apellidos: '${(Auth.userProfile && Auth.userProfile.apellidos) || 'Admin'}', colegio_id: (Auth.userProfile && Auth.userProfile.colegio_id) || Storage.activeSchool, colegioId: (Auth.userProfile && Auth.userProfile.colegio_id) || Storage.activeSchool })">
             ${rolesOptions}
           </select>
 

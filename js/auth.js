@@ -437,6 +437,10 @@ const Auth = (() => {
       if (!state.currentUser) return;
 
       const userEmail = ((state.currentUser.email || state.currentUser.user_metadata?.email) || '').trim().toLowerCase();
+
+      // FIX: preservar impersonación al volver de pestaña — onAuthStateChange INITIAL_SESSION no debe pisar pie/utp
+      const isImpSession = typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original');
+      if (isImpSession) return;
       
       // Optimizacion critica y prevencion de cuelgues asincronos
       if (userEmail === 'itsotocadiz@gmail.com') {
@@ -917,7 +921,7 @@ const Auth = (() => {
     }
   }
 
-  function impersonateUser(targetUid, targetRole, targetProfile) {
+  async function impersonateUser(targetUid, targetRole, targetProfile) {
     const allowedImpersonate = ['admin','coordinadora','directora','profesor','utp','pie','convivencia','inspectoria','finanzas','postulante','directivo'];
     if(targetRole === 'superadmin'){ App.showToast('No se puede emular superadmin','warning'); return; }
     if(!allowedImpersonate.includes(targetRole)){ App.showToast('Rol no permitido','danger'); return; }
@@ -940,6 +944,10 @@ const Auth = (() => {
 
     state.currentRole = targetRole;
     state.userProfile = enrichedProfile;
+    // FIX: sincronizar Storage para todos los roles (evita header Terra vs body DEMO)
+    if (typeof Storage !== 'undefined' && Storage.setActiveSchool && Storage.activeSchool !== targetColegio) {
+      try { await Storage.setActiveSchool(targetColegio); } catch (_e) { try { localStorage.setItem('barita_active_school', targetColegio); Storage.activeSchool = targetColegio; } catch(__e){} }
+    }
 
     App.showToast(`Simulando rol: ${targetRole}`, 'info');
 
