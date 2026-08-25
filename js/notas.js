@@ -149,6 +149,14 @@ var NotasView = (() => {
     // Comprobador de visibilidad por receptor / emisor
     const isNotaUserMatch = (n) => {
       if (!n) return false;
+      // Nota privada: solo emisor (ni admin ve)
+      const isPriv = n.visibilidad === 'privada' || n.is_privada === true || (n.receptor_nombre && String(n.receptor_nombre).toLowerCase().includes('solo yo')) || (n.receptor_id && String(n.receptor_id).toLowerCase().includes('privada'));
+      if (isPriv) {
+        const emisorIdStrPriv = String(n.emisor_id || '').toLowerCase();
+        if (myId && emisorIdStrPriv === String(myId).toLowerCase()) return true;
+        if (myEmail && (n.creador_email || '').toLowerCase() === myEmail) return true;
+        return false;
+      }
       if (myRole === 'superadmin' || myRole === 'admin') return true;
 
       const emisorIdStr = String(n.emisor_id || '').toLowerCase();
@@ -277,7 +285,17 @@ var NotasView = (() => {
             
             <!-- Cuerpo Desplazable (ModalBody) -->
             <div style="padding: 1.25rem 1.5rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 1rem;">
-              <div>
+              <div style="display:flex;flex-direction:column;gap:.6rem;">
+                <label style="font-weight:600;font-size:.85rem;color:var(--text-primary);">Visibilidad</label>
+                <div class="barita-segmented" role="radiogroup" aria-label="Visibilidad de la nota">
+                  <button type="button" id="btn-vis-compartida" class="is-active" aria-pressed="true" onclick="NotasView.setVisibilidadNota('compartida')">👥 Compartida</button>
+                  <button type="button" id="btn-vis-privada" aria-pressed="false" onclick="NotasView.setVisibilidadNota('privada')">🔒 Solo para mí</button>
+                </div>
+                <div id="nota-privada-banner" class="barita-private-banner hidden">
+                  <span>🔒</span><span><strong>Nota privada</strong> — Solo tú podrás verla en el Muro. Ideal para recordatorios personales.</span>
+                </div>
+              </div>
+              <div id="wrap-destinatarios">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
                   <label style="font-weight: 600; font-size: 0.85rem; color: #334155; margin: 0;">Seleccionar Destinatarios (Múltiples)</label>
                   <div style="display: flex; gap: 0.35rem;">
@@ -290,7 +308,7 @@ var NotasView = (() => {
                   ${getMultiSelectDestinatariosHTML()}
                 </div>
                 <small style="display: block; margin-top: 0.25rem; color: #64748b; font-size: 0.78rem;">
-                  💡 Puedes marcar más de un funcionario individual o grupo colectivo a la vez.
+                  💡 Puedes marcar más de un funcionario individual o grupo colectivo a la vez. En privado se omite.
                 </small>
               </div>
 
@@ -583,6 +601,25 @@ var NotasView = (() => {
     checkboxes.forEach(cb => { cb.checked = !!selectAll; });
   }
 
+  // Visibilidad Solo para mí / Compartida
+  let _visibilidad = 'compartida';
+  function setVisibilidadNota(modo) {
+    _visibilidad = modo;
+    const isPriv = modo === 'privada';
+    const btnPriv = document.getElementById('btn-vis-privada');
+    const btnComp = document.getElementById('btn-vis-compartida');
+    if (btnPriv) { btnPriv.classList.toggle('is-active', isPriv); btnPriv.setAttribute('aria-pressed', isPriv); }
+    if (btnComp) { btnComp.classList.toggle('is-active', !isPriv); btnComp.setAttribute('aria-pressed', !isPriv); }
+    const banner = document.getElementById('nota-privada-banner');
+    if (banner) banner.classList.toggle('hidden', !isPriv);
+    const wrap = document.getElementById('container-destinatarios-multiselect');
+    if (wrap) wrap.classList.toggle('is-disabled', isPriv);
+    const chk = document.getElementById('nota-confirmacion');
+    if (chk) { if (isPriv) { chk.checked = false; chk.disabled = true; } else chk.disabled = false; }
+    const submit = document.querySelector('#form-crear-nota button[type="submit"]');
+    if (submit) submit.textContent = isPriv ? '💾 Guardar privada' : 'Publicar Nota';
+  }
+
   function renderNotaCardHTML(nota) {
     const pal = COLOR_PALETTE[nota.color] || COLOR_PALETTE.amarillo;
     const comentarios = (typeof Storage !== 'undefined' && Storage.getNotaComentarios) ? Storage.getNotaComentarios(nota.id) : [];
@@ -753,6 +790,8 @@ var NotasView = (() => {
             }
           }
           container.innerHTML = getMultiSelectDestinatariosHTML(usuariosList);
+          // Default compartida (usuario elige si quiere solo para mí)
+          setTimeout(()=>{ try{ setVisibilidadNota('compartida'); }catch(_e){} }, 0);
         } catch (err) {
           console.warn('Error fetching usuarios para notas:', err);
           container.innerHTML = '<div style="padding: 1rem; text-align: center; color: #ef4444; font-size: 0.85rem;">⚠️ Error al cargar funcionarios</div>';
@@ -770,22 +809,32 @@ var NotasView = (() => {
   }
 
   async function handleSaveNota() {
-    const checkedBoxes = Array.from(document.querySelectorAll('#container-destinatarios-multiselect input[type="checkbox"]:checked'));
-    
-    if (checkedBoxes.length === 0) {
-      if (typeof App !== 'undefined' && App.showToast) App.showToast('Selecciona al menos un destinatario o grupo colectivo', 'warning');
-      return;
+    const isPrivada = _visibilidad === 'privada';
+    let receptorId, receptorNombre, destinatariosEmails, destinatariosRoles, destinatariosIds;
+
+    if (isPrivada) {
+      const curUser = (typeof Auth !== 'undefined' && Auth.currentUser) ? Auth.currentUser : null;
+      const myIdPriv = curUser ? (curUser.id || curUser.uid || 'yo') : 'yo';
+      const myEmailPriv = curUser ? (curUser.email || '') : '';
+      receptorId = String(myIdPriv);
+      receptorNombre = 'Solo yo (Privada)';
+      destinatariosEmails = myEmailPriv ? [myEmailPriv] : [];
+      destinatariosRoles = [];
+      destinatariosIds = [String(myIdPriv)];
+    } else {
+      const checkedBoxes = Array.from(document.querySelectorAll('#container-destinatarios-multiselect input[type="checkbox"]:checked'));
+      if (checkedBoxes.length === 0) {
+        if (typeof App !== 'undefined' && App.showToast) App.showToast('Selecciona al menos un destinatario o grupo colectivo', 'warning');
+        return;
+      }
+      const receptorIdsList = checkedBoxes.map(cb => cb.value.split('|')[0]);
+      const receptorNombresList = checkedBoxes.map(cb => cb.value.split('|')[1]);
+      receptorId = receptorIdsList.join(',');
+      receptorNombre = receptorNombresList.join(', ');
+      destinatariosEmails = receptorIdsList.filter(v => v.includes('@'));
+      destinatariosRoles = receptorIdsList.filter(v => !v.includes('@') && v !== 'todos');
+      destinatariosIds = receptorIdsList;
     }
-
-    const receptorIdsList = checkedBoxes.map(cb => cb.value.split('|')[0]);
-    const receptorNombresList = checkedBoxes.map(cb => cb.value.split('|')[1]);
-
-    const receptorId = receptorIdsList.join(',');
-    const receptorNombre = receptorNombresList.join(', ');
-
-    const destinatariosEmails = receptorIdsList.filter(v => v.includes('@'));
-    const destinatariosRoles = receptorIdsList.filter(v => !v.includes('@') && v !== 'todos');
-    const destinatariosIds = receptorIdsList;
 
     const color = 'amarillo';
 
@@ -835,10 +884,12 @@ var NotasView = (() => {
       destinatarios_ids: destinatariosIds,
       mensaje: mensaje,
       color: color,
-      requiere_confirmacion: requiereConfirmacion,
+      requiere_confirmacion: isPrivada ? false : requiereConfirmacion,
       leido: false,
       is_deleted: false,
       colegio_id: activeSchool,
+      visibilidad: isPrivada ? 'privada' : 'compartida',
+      is_privada: isPrivada,
     };
 
     try {
@@ -1321,7 +1372,9 @@ var NotasView = (() => {
     closeCommentThread,
     handleSendComment,
     openRevisarNotaModal,
-    closeRevisarNotaModal
+    closeRevisarNotaModal,
+    toggleSelectAllDestinatarios,
+    setVisibilidadNota
   };
 })();
 

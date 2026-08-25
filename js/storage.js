@@ -2187,7 +2187,7 @@ Object.assign(Storage, {
       'id', 'colegio_id', 'emisor_id', 'emisor_nombre', 'receptor_id', 'receptor_nombre',
       'mensaje', 'color', 'requiere_confirmacion', 'leido', 'fecha_lectura',
       'leido_por_nombre', 'is_deleted', 'deleted_by', 'deleted_at', 'created_at', 'updated_at',
-      'confirmaciones', 'creador_email'
+      'confirmaciones', 'creador_email', 'visibilidad', 'is_privada'
     ];
     const supabasePayload = {};
     allowedColumns.forEach(col => {
