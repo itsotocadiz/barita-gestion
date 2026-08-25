@@ -1332,28 +1332,29 @@ const DashboardView = (() => {
           const { error } = await client.from('casos').upsert(cleanPayload);
           if (error) throw error;
 
-          // También actualizar el estudiante asociado para quitar la bandera y desactivar alarmas
-          const assocEstId = caso.estudianteId || caso.estudiante_id || caso.estudiante_id_ref;
-          if (assocEstId) {
-            const est = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => e.id === assocEstId);
-            if (est) {
-              const casos = (Storage.getCasos ? Storage.getCasos() : []);
-              const tipo = caso.tipo || 'seguimiento';
-              const quedanActivos = casos.filter(c => c.estado !== 'cerrado' && c.id !== casoId && (c.estudianteId === assocEstId || c.estudiante_id === assocEstId || c.estudiante_id_ref === assocEstId) && c.tipo === tipo).length > 0;
-              if (!quedanActivos) {
-                if (tipo === 'seguimiento') est.enSeguimiento = false;
-                if (tipo === 'complejo') est.esComplejo = false;
-                if (tipo === 'apoyo_psicosocial') est.requiereApoyoPsicosocial = false;
-                if (tipo === 'plan_utp') est.planUtpActivo = false;
-                if (tipo === 'medidas_pie') est.medidasPie = false;
-                
-                // Si el estudiante ya no está en seguimiento activo y no tiene compromisos conductuales, limpiamos fechas
-                if (!est.enSeguimiento && !est.compromisoConductualActivo) {
-                  est.fechaProximoSeguimiento = null;
-                  est.fechaProximo = null;
-                }
-                await Storage.saveEstudiante(est, true);
+          // También actualizar el/los estudiante(s) asociado(s) para quitar la bandera
+          const allEstIds = new Set();
+          const singleId = caso.estudianteId || caso.estudiante_id || caso.estudiante_id_ref;
+          if (singleId) allEstIds.add(String(singleId));
+          if (Array.isArray(caso.estudiantesInvolucrados)) caso.estudiantesInvolucrados.forEach(id=> allEstIds.add(String(id)));
+          // fallback: si el alert vino con estId param, también incluir
+          if (estId) allEstIds.add(String(estId));
+          for (const assocEstId of allEstIds) {
+            const est = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => String(e.id)===String(assocEstId));
+            if (!est) continue;
+            const casos = (Storage.getCasos ? Storage.getCasos() : []);
+            const tipo = caso.tipo || 'seguimiento';
+            const quedanActivos = casos.filter(c => c.estado !== 'cerrado' && String(c.id)!==String(casoId) && (String(c.estudianteId)===String(assocEstId) || String(c.estudiante_id)===String(assocEstId) || String(c.estudiante_id_ref)===String(assocEstId) || (Array.isArray(c.estudiantesInvolucrados) && c.estudiantesInvolucrados.map(String).includes(String(assocEstId)))) && String(c.tipo)===String(tipo)).length > 0;
+            if (!quedanActivos) {
+              if (tipo === 'seguimiento') est.enSeguimiento = false;
+              if (tipo === 'complejo') est.esComplejo = false;
+              if (tipo === 'apoyo_psicosocial') est.requiereApoyoPsicosocial = false;
+              if (tipo === 'plan_utp') est.planUtpActivo = false;
+              if (tipo === 'medidas_pie') est.medidasPie = false;
+              if (!est.enSeguimiento && !est.compromisoConductualActivo) {
+                est.fechaProximoSeguimiento = null; est.fechaProximo = null;
               }
+              await Storage.saveEstudiante(est, true);
             }
           }
         }
