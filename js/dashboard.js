@@ -152,17 +152,10 @@ const DashboardView = (() => {
       if (est.planUtpActivo) categorias.push('plan_utp');
       if (est.esEstudiantePIE || est.medidasPie) categorias.push('pie');
       
-      // No filtrar las alertas directas de bitácoras de estudiantes por flags locales desactualizados si poseen fecha agendada
-      if (categorias.length === 0) {
-        categorias.push('seguimiento');
-      }
+      if (categorias.length === 0) return;
 
-      // Buscar si el estudiante tiene fechaProximoSeguimiento agendada directa o en bitacora
+      // Solo fecha directa del estudiante (no bitácora antigua) — evita que cierre vuelva a aparecer por registro viejo
       let proximaFecha = est.fechaProximoSeguimiento || est.fechaProximo || null;
-      if (!proximaFecha && Array.isArray(est.bitacoraSeguimiento)) {
-        const itemBit = est.bitacoraSeguimiento.find(b => b && (b.fechaProximoSeguimiento || b.fechaProximo));
-        if (itemBit) proximaFecha = itemBit.fechaProximoSeguimiento || itemBit.fechaProximo;
-      }
 
       if (!proximaFecha || proximaFecha === 'null' || proximaFecha === 'undefined') return;
       const parsedTime = new Date(proximaFecha).getTime();
