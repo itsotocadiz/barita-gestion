@@ -544,14 +544,14 @@ var NotasView = (() => {
     // Detectamos los roles existentes en el personal filtrado
     const rolesPresentes = new Set(filteredStaff.map(u => (u.role || u.rol || 'staff').toLowerCase()));
 
-    // 1. Grupos Colectivos / Por Rol (Dinámicos)
+    // 1. Grupos Colectivos / Por Rol (Dinámicos) — labels cortos para ahorrar espacio
     const grupos = [
-      { id: 'todos', icon: Icons.get('globe', 16), label: 'Todo el Equipo de Gestión', condicion: () => true },
-      { id: 'utp', icon: Icons.get('book-open', 16), label: 'Equipo UTP', condicion: () => rolesPresentes.has('utp') },
-      { id: 'direccion', icon: Icons.get('landmark', 16), label: 'Equipo de Dirección', condicion: () => rolesPresentes.has('director') || rolesPresentes.has('directora') },
-      { id: 'convivencia', icon: Icons.get('message-square', 16), label: 'Equipo de Convivencia', condicion: () => rolesPresentes.has('convivencia') },
-      { id: 'pie', icon: Icons.get('shield', 16), label: 'Equipo PIE', condicion: () => rolesPresentes.has('pie') },
-      { id: 'inspectoria', icon: Icons.get('eye', 16), label: 'Inspectoría General', condicion: () => rolesPresentes.has('admin') || rolesPresentes.has('administrador') || rolesPresentes.has('administrator') }
+      { id: 'todos', icon: Icons.get('globe', 14), label: 'EQUIPO', condicion: () => true },
+      { id: 'utp', icon: Icons.get('book-open', 14), label: 'UTP', condicion: () => rolesPresentes.has('utp') },
+      { id: 'direccion', icon: Icons.get('landmark', 14), label: 'DIRECCIÓN', condicion: () => rolesPresentes.has('director') || rolesPresentes.has('directora') },
+      { id: 'convivencia', icon: Icons.get('message-square', 14), label: 'CONVIVENCIA', condicion: () => rolesPresentes.has('convivencia') },
+      { id: 'pie', icon: Icons.get('shield', 14), label: 'PIE', condicion: () => rolesPresentes.has('pie') },
+      { id: 'inspectoria', icon: Icons.get('eye', 14), label: 'INSPECTORÍA', condicion: () => rolesPresentes.has('admin') || rolesPresentes.has('administrador') || rolesPresentes.has('administrator') }
     ];
 
     const gruposActivos = grupos.filter(g => g.condicion());
@@ -605,10 +605,29 @@ var NotasView = (() => {
   }
   function filtrarDestinatarios(q) {
     const term = (q||'').toLowerCase().trim();
+    let visible=0;
     document.querySelectorAll('#lista-usuarios-filtrada label').forEach(lb=>{
       const txt = lb.textContent.toLowerCase();
-      lb.style.display = !term || txt.includes(term) ? 'flex' : 'none';
+      const show = !term || txt.includes(term);
+      lb.style.display = show ? 'flex' : 'none';
+      if(show) visible++;
     });
+    // muestra hint si no hay resultados
+    let hint=document.getElementById('nota-busqueda-hint');
+    if(!hint){
+      const cont=document.getElementById('lista-usuarios-filtrada');
+      if(cont){
+        hint=document.createElement('small');
+        hint.id='nota-busqueda-hint';
+        hint.style.cssText='color:#94a3b8;font-size:0.78rem;text-align:center;padding:0.4rem;display:none;';
+        hint.textContent='Sin resultados para "'+q+'"';
+        cont.parentNode.insertBefore(hint, cont.nextSibling);
+      }
+    }
+    if(hint){
+      hint.style.display = term && visible===0 ? 'block' : 'none';
+      if(term && visible===0) hint.textContent='Sin resultados para "'+q+'"';
+    }
   }
 
   // Visibilidad Solo para mí / Compartida
