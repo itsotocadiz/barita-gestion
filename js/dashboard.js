@@ -1281,7 +1281,7 @@ const DashboardView = (() => {
           }
         }
       } else if (accion === 'cerrar_caso') {
-        // Cerrar Caso - si viene de alerta directa de estudiante (est_...), cerrar bandera del estudiante
+        // Cerrar Caso - si viene de alerta directa de estudiante (est_...), cerrar bandera del estudiante y sus casos
         if (casoId && String(casoId).startsWith('est_')) {
           const estDirect = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => e.id === estId);
           if (estDirect) {
@@ -1291,6 +1291,27 @@ const DashboardView = (() => {
             if (!Array.isArray(estDirect.bitacoraSeguimiento)) estDirect.bitacoraSeguimiento = [];
             estDirect.bitacoraSeguimiento.unshift({ id: Date.now().toString(), fecha: new Date().toISOString(), texto: `🏁 Seguimiento cerrado desde Dashboard${comentario ? ': '+comentario : ''}`, registradoPor: (Auth.currentUser ? (Auth.currentUser.email||'Sistema') : 'Sistema') });
             await Storage.saveEstudiante(estDirect, true);
+          }
+          // Cerrar también todos los casos activos de ese estudiante (evita que alerta vuelva)
+          const casosDelEst = (Storage.getCasos ? Storage.getCasos() : []).filter(c => c.estado !== 'cerrado' && (c.estudianteId === estId || c.estudiante_id === estId || c.estudiante_id_ref === estId || (Array.isArray(c.estudiantesInvolucrados) && c.estudiantesInvolucrados.includes(estId))));
+          for (const casoEst of casosDelEst) {
+            casoEst.estado = 'cerrado';
+            if (!Array.isArray(casoEst.seguimiento)) casoEst.seguimiento = [];
+            casoEst.seguimiento.unshift({ id: Date.now().toString()+casoEst.id.substring(0,4), fecha: new Date().toISOString(), texto: `🏁 Seguimiento cerrado desde Dashboard${comentario ? ': '+comentario : ''}`, registradoPor: (Auth.currentUser ? (Auth.currentUser.email||'Sistema') : 'Sistema') });
+            const cleanPayloadEst = {
+              id: casoEst.id,
+              colegio_id: casoEst.colegio_id || casoEst.colegioId || (typeof Storage!=='undefined'?Storage.activeSchool:'demo'),
+              estudiante_id: casoEst.estudiante_id || casoEst.estudianteId || casoEst.estudiante_id_ref || null,
+              titulo: casoEst.titulo || '',
+              descripcion: casoEst.descripcion || '',
+              estado: casoEst.estado || 'cerrado',
+              tipo: casoEst.tipo || 'seguimiento',
+              fecha: casoEst.fecha || new Date().toISOString(),
+              creado_por_id: casoEst.creado_por_id || casoEst.creadoPorId || null,
+              seguimiento: Array.isArray(casoEst.seguimiento) ? casoEst.seguimiento : []
+            };
+            const { error: errEstCaso } = await client.from('casos').upsert(cleanPayloadEst);
+            if (errEstCaso) console.warn('close casoEst warn:', errEstCaso.message);
           }
         }
         const caso = (Storage.getCasos ? Storage.getCasos() : []).find(c => c.id === casoId);
