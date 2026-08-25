@@ -16,12 +16,13 @@ const DashboardView = (() => {
     const casos = (typeof Storage !== 'undefined' && typeof Storage.getCasos === 'function') ? Storage.getCasos() : [];
     const estudiantes = (typeof Storage !== 'undefined' && typeof Storage.getEstudiantes === 'function') ? Storage.getEstudiantes() : [];
 
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayStr = (typeof BARITA_hoyChileISO !== 'undefined' ? BARITA_hoyChileISO() : (()=>{ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })());
     // Usar rol de APLICACIÓN (userProfile.role / currentRole), NO el JWT de Supabase
     // Auth.currentUser.role siempre es 'authenticated' en Supabase → causa falsos positivos en yaLeido
     const role = (Auth.userProfile && Auth.userProfile.role) || Auth.currentRole || (Auth.currentUser && Auth.currentUser.role) || 'profesor';
     const cleanRole = role.toLowerCase().trim();
+    // FIX: alertas de seguimiento visibles para todo el equipo de gestión (no solo creador)
+    const rolesConAlerta = ['superadmin','admin','inspectoria','utp','pie','convivencia','directora','coordinadora','profesor'];
 
     const alertasPorCategoria = {};
     CATEGORIAS_ALERTAS.forEach(c => alertasPorCategoria[c.key] = []);
