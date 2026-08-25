@@ -701,9 +701,9 @@ Object.assign(Storage, {
     if (est.razonJustificacionGeneral) metadata.razonJustificacionGeneral = est.razonJustificacionGeneral;
     if (est.obsJustificacionGeneral) metadata.obsJustificacionGeneral = est.obsJustificacionGeneral;
     if (Array.isArray(est.bitacoraSeguimiento)) metadata.bitacoraSeguimiento = est.bitacoraSeguimiento;
-    if (est.fechaProximoSeguimiento) metadata.fechaProximoSeguimiento = est.fechaProximoSeguimiento;
-    if (est.proximoSeguimiento) metadata.proximoSeguimiento = est.proximoSeguimiento;
-    if (est.fechaProximo) metadata.fechaProximo = est.fechaProximo;
+    if (est.fechaProximoSeguimiento !== undefined) metadata.fechaProximoSeguimiento = est.fechaProximoSeguimiento;
+    if (est.proximoSeguimiento !== undefined) metadata.proximoSeguimiento = est.proximoSeguimiento;
+    if (est.fechaProximo !== undefined) metadata.fechaProximo = est.fechaProximo;
     if (fechaNac) metadata.fechaCumpleanos = fechaNac;
 
     return {
