@@ -477,7 +477,7 @@ const DashboardView = (() => {
     const compromisosIncumplidos = [];
     const compromisosCumplidos = [];
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = BARITA_hoyChileISO();
 
     estudiantes.forEach(est => {
       if (!est || !est.compromisoConductualActivo) return;
@@ -1103,7 +1103,7 @@ const DashboardView = (() => {
         // --- ALTA APROBADA: desactivar compromiso + registrar en bitácora ---
         est.compromisoConductualActivo = false;
         est.compromisoEstado = 'dado_de_alta';
-        est.compromisoFechaAlta = new Date().toISOString().split('T')[0];
+        est.compromisoFechaAlta = BARITA_hoyChileISO();
 
         if (!Array.isArray(est.bitacoraSeguimiento)) est.bitacoraSeguimiento = [];
 
@@ -1212,7 +1212,7 @@ const DashboardView = (() => {
       if (accion === 'registrar') {
         const entry = {
           id: Date.now().toString(),
-          fecha: new Date().toISOString().split('T')[0],
+          fecha: BARITA_hoyChileISO(),
           texto: comentario || 'Seguimiento registrado desde Dashboard',
           fechaProximoSeguimiento: proximaFecha,
           fechaProximo: proximaFecha,
@@ -1320,7 +1320,7 @@ const DashboardView = (() => {
         if (est) {
           est.compromisoConductualActivo = false;
           est.compromisoEstado = 'cumplido';
-          est.compromisoFechaTermino = new Date().toISOString().split('T')[0];
+          est.compromisoFechaTermino = BARITA_hoyChileISO();
 
           // Evaluar otros casos activos de seguimiento y banderas del estudiante
           const activeCases = (Storage.getCasos ? Storage.getCasos() : [])

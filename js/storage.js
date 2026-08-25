@@ -3,6 +3,14 @@
    Reemplaza a localStorage. Mantiene una caché en memoria
    sincronizada en tiempo real.
    ================================================================ */
+// Helper fechas BARITA — zona horaria negocio America/Santiago (evita corrida UTC)
+const BARITA_TZ = 'America/Santiago';
+const BARITA_hoyChileISO = () => new Intl.DateTimeFormat('en-CA', { timeZone: BARITA_TZ }).format(new Date());
+const BARITA_nowChileYear = () => new Intl.DateTimeFormat('en-CA', { timeZone: BARITA_TZ, year: 'numeric' }).format(new Date());
+const BARITA_toChileDateKey = (d) => {
+  try { const dt = d instanceof Date ? d : new Date(d); if (isNaN(dt)) return String(d||''); return new Intl.DateTimeFormat('en-CA', { timeZone: BARITA_TZ }).format(dt); } catch(_e){ return String(d||''); }
+};
+try{ window.BARITA_hoyChileISO=BARITA_hoyChileISO; window.BARITA_nowChileYear=BARITA_nowChileYear; window.BARITA_toChileDateKey=BARITA_toChileDateKey; window.BARITA_TZ=BARITA_TZ; }catch(_e){}
 
 const Storage = {
   cache: {
@@ -24,7 +32,7 @@ const Storage = {
     nota_comentarios: []
   },
   activeSchool: localStorage.getItem('barita_active_school') || 'demo',
-  activeYear: String(new Date().getFullYear()),
+  activeYear: BARITA_nowChileYear(),
   listeners: [],
   isReady: false,
   localMutations: { estudiantes: {}, anotaciones: {}, eventos: {}, casos: {}, funcionarios: {}, protocolos_activos: {} },
@@ -249,7 +257,7 @@ const Storage = {
     }
 
     if (this.activeSchool === targetSchool && this.isReady) {
-      const today = new Date().toDateString();
+      const today = BARITA_hoyChileISO();
       let lastDate = '';
       try { lastDate = localStorage.getItem('barita_last_sync_date') || ''; } catch (_e) {}
       if (lastDate === today) {
@@ -286,7 +294,7 @@ const Storage = {
   },
 
   getActiveYear() {
-    return this.activeYear || String(new Date().getFullYear());
+    return this.activeYear || BARITA_nowChileYear();
   },
 
   _filterByYear(arr) {
@@ -295,13 +303,12 @@ const Storage = {
     return arr.filter(item => {
       if (item.anio && String(item.anio) === year) return true;
       if (item.year && String(item.year) === year) return true;
-      
-      const fecha = (item.fecha || item.fechaCreacion || item.fechaActivacion || '');
-      if (fecha && String(fecha).startsWith(year)) return true;
-      
-      // If no date/year, include it.
-      if (!fecha && !item.anio && !item.year) return true;
-      
+      const rawFecha = (item.fecha || item.fechaCreacion || item.fechaActivacion || '');
+      if (rawFecha) {
+        const chileKey = BARITA_toChileDateKey(rawFecha);
+        if (chileKey.startsWith(year)) return true;
+      }
+      // Si no hay fecha ni año, no incluir (evita contaminar año)
       return false;
     });
   },
@@ -444,7 +451,7 @@ Object.assign(Storage, {
         }));
         
         this.isReady = true;
-        try { localStorage.setItem('barita_last_sync_date', new Date().toDateString()); } catch (_e) {}
+        try { localStorage.setItem('barita_last_sync_date', BARITA_hoyChileISO()); } catch (_e) {}
 
         if (!localStorage.getItem('barita_limpieza_general_v1')) {
           localStorage.setItem('barita_limpieza_general_v1', 'true');
@@ -954,7 +961,7 @@ Object.assign(Storage, {
       id: rawId,
       estudiante_id: estId,
       funcionario_id: funcId,
-      fecha: atraso.fecha || new Date().toISOString().split('T')[0],
+      fecha: atraso.fecha || BARITA_hoyChileISO(),
       hora: atraso.hora || '08:00',
       minutos_atraso: atraso.minutosAtraso || atraso.minutos_atraso || 15,
       motivo: atraso.motivo || atraso.descripcion || 'Atraso en ingreso',
@@ -1143,7 +1150,7 @@ Object.assign(Storage, {
         const payload = {
           id: String(inasistencia.id),
           estudiante_id: (inasistencia.estudiante_id || inasistencia.estudianteId || '').toString().trim() || null,
-          fecha: inasistencia.fecha || new Date().toISOString().split('T')[0],
+          fecha: inasistencia.fecha || BARITA_hoyChileISO(),
           justificado: !!inasistencia.justificado,
           colegio_id: String(inasistencia.colegio_id || inasistencia.colegioId || Storage.activeSchool || 'demo')
         };

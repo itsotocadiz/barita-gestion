@@ -629,7 +629,7 @@ const CasosView = {
       <form id="form-seg" onsubmit="event.preventDefault(); CasosView.guardarSeguimiento('${casoId}')">
         <div class="form-group mb-3">
           <label class="form-label">Fecha de la Acción *</label>
-          <input type="date" id="seg-fecha" class="form-control" required value="${new Date().toISOString().split('T')[0]}">
+          <input type="date" id="seg-fecha" class="form-control" required value="${BARITA_hoyChileISO()}">
         </div>
         <div class="form-group mb-3">
           <label class="form-label">Acción Previa / Tipo de Seguimiento *</label>
@@ -733,7 +733,7 @@ const CasosView = {
     if (!seg) return;
     
     const fechaDate = new Date(seg.fecha);
-    const fechaStr = fechaDate.toISOString().split('T')[0];
+    const fechaStr = BARITA_toChileDateKey(fechaDate);
     
     const html = `
       <form id="form-editar-seg" onsubmit="event.preventDefault(); CasosView.guardarEdicionSeguimiento('${casoId}', '${segId}')">

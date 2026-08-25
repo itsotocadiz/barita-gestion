@@ -462,7 +462,7 @@ const AsistenciaView = (() => {
     },
 
     async registrarAccion(tipo) {
-      const hoyStr = new Date().toISOString().split('T')[0];
+      const hoyStr = BARITA_hoyChileISO();
       const estId = this.selectedEstudianteId;
       if (!estId) return;
       const currentUser = Auth.currentUser ? Auth.currentUser.uid : 'sistema';
@@ -556,7 +556,7 @@ const AsistenciaView = (() => {
     },
 
     async registrarInasistencia(estId, fecha) {
-      fecha = fecha || new Date().toISOString().split('T')[0];
+      fecha = fecha || BARITA_hoyChileISO();
       const est = Storage.getEstudianteById(estId);
       if (!est) return;
       
@@ -591,7 +591,7 @@ const AsistenciaView = (() => {
     },
 
     async justificarInasistencia(estId, fecha) {
-      fecha = fecha || new Date().toISOString().split('T')[0];
+      fecha = fecha || BARITA_hoyChileISO();
       const ins = this.inasistenciasCache.find(item => item.estudianteId === estId && item.fecha === fecha);
       if (!ins) {
         App.showToast('No se encontró inasistencia en esa fecha', 'warning');
@@ -661,7 +661,7 @@ const AsistenciaView = (() => {
             estudianteId: estId,
             tipo: '3_atrasos',
             estado: 'pendiente',
-            fecha_creacion: new Date().toISOString().split('T')[0],
+            fecha_creacion: BARITA_hoyChileISO(),
             detalle: `Acumuló ${atrasosNoJustificados.length} atrasos no justificados`,
             timestamp: Date.now()
           };
