@@ -319,7 +319,7 @@ var NotasView = (() => {
                 <textarea id="nota-mensaje" class="form-control" rows="3" placeholder="Escribe el mensaje o retroalimentación..." style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; font-family: inherit;" required></textarea>
               </div>
 
-              <div>
+              <div id="wrap-confirmacion">
                 <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #334155; cursor: pointer;">
                   <input type="checkbox" id="nota-confirmacion" style="width: 16px; height: 16px;" checked>
                   <span><strong>Requiere Confirmación / Firma de Lectura</strong></span>
@@ -641,10 +641,12 @@ var NotasView = (() => {
     if (btnComp) { btnComp.classList.toggle('is-active', !isPriv); btnComp.setAttribute('aria-pressed', !isPriv); }
     const banner = document.getElementById('nota-privada-banner');
     if (banner) banner.classList.toggle('hidden', !isPriv);
-    const wrap = document.getElementById('container-destinatarios-multiselect');
-    if (wrap) wrap.classList.toggle('is-disabled', isPriv);
+    const wrapOuter = document.getElementById('wrap-destinatarios');
+    if (wrapOuter) wrapOuter.style.display = isPriv ? 'none' : 'block';
+    const wrapConf = document.getElementById('wrap-confirmacion');
+    if (wrapConf) wrapConf.style.display = isPriv ? 'none' : 'block';
     const chk = document.getElementById('nota-confirmacion');
-    if (chk) { if (isPriv) { chk.checked = false; chk.disabled = true; } else chk.disabled = false; }
+    if (chk) { if (isPriv) { chk.checked = false; } }
     const submit = document.querySelector('#form-crear-nota button[type="submit"]');
     if (submit) submit.textContent = isPriv ? '💾 Guardar privada' : 'Publicar Nota';
   }
