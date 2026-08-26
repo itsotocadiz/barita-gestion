@@ -1228,7 +1228,7 @@ const DashboardView = (() => {
             caso.proximoSeguimiento = proximaFecha;
             caso.fechaProximoSeguimiento = proximaFecha;
 
-            // FIX: payload limpio solo columnas reales (evita 'curso' schema cache)
+            // FIX: payload limpio solo columnas reales
             const cleanPayload = {
               id: caso.id,
               colegio_id: caso.colegio_id || caso.colegioId || (typeof Storage!=='undefined'?Storage.activeSchool:'demo'),
@@ -1239,7 +1239,8 @@ const DashboardView = (() => {
               tipo: caso.tipo || 'seguimiento',
               fecha: caso.fecha || new Date().toISOString(),
               creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
-              seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : []
+              seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : [],
+              estudiantesInvolucrados: Array.isArray(caso.estudiantesInvolucrados) ? caso.estudiantesInvolucrados : (Array.isArray(caso.estudiantes_involucrados) ? caso.estudiantes_involucrados : [])
             };
             const { error } = await client.from('casos').upsert(cleanPayload);
             if (error) throw error;
@@ -1309,7 +1310,8 @@ const DashboardView = (() => {
               tipo: casoEst.tipo || 'seguimiento',
               fecha: casoEst.fecha || new Date().toISOString(),
               creado_por_id: casoEst.creado_por_id || casoEst.creadoPorId || null,
-              seguimiento: Array.isArray(casoEst.seguimiento) ? casoEst.seguimiento : []
+              seguimiento: Array.isArray(casoEst.seguimiento) ? casoEst.seguimiento : [],
+              estudiantesInvolucrados: Array.isArray(casoEst.estudiantesInvolucrados) ? casoEst.estudiantesInvolucrados : (Array.isArray(casoEst.estudiantes_involucrados) ? casoEst.estudiantes_involucrados : [])
             };
             const { error: errEstCaso } = await client.from('casos').upsert(cleanPayloadEst);
             if (errEstCaso) console.warn('close casoEst warn:', errEstCaso.message);
@@ -1318,7 +1320,7 @@ const DashboardView = (() => {
         const caso = (Storage.getCasos ? Storage.getCasos() : []).find(c => c.id === casoId);
         if (caso) {
           caso.estado = 'cerrado';
-          // FIX: payload limpio solo columnas reales de public.casos (evita 'curso' y otros no existentes)
+          // FIX: payload limpio solo columnas reales
           const cleanPayload = {
             id: caso.id,
             colegio_id: caso.colegio_id || caso.colegioId || (typeof Storage!=='undefined'?Storage.activeSchool:'demo'),
@@ -1329,7 +1331,8 @@ const DashboardView = (() => {
             tipo: caso.tipo || 'seguimiento',
             fecha: caso.fecha || new Date().toISOString(),
             creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
-            seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : []
+            seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : [],
+            estudiantesInvolucrados: Array.isArray(caso.estudiantesInvolucrados) ? caso.estudiantesInvolucrados : (Array.isArray(caso.estudiantes_involucrados) ? caso.estudiantes_involucrados : [])
           };
           const { error } = await client.from('casos').upsert(cleanPayload);
           if (error) throw error;
@@ -1423,6 +1426,8 @@ const DashboardView = (() => {
       console.error('guardarQuickSeguimiento error:', e);
       const msg = (e && e.message) ? e.message : (e && e.error_description) ? e.error_description : String(e);
       App.showToast('No se pudo guardar la acción: ' + msg.substring(0,120), 'danger');
+    } finally {
+      cerrarQuickSeguimiento();
     }
   }
 

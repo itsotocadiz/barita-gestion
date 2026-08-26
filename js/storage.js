@@ -1646,7 +1646,8 @@ Object.assign(Storage, {
       tipo: caso.tipo || 'seguimiento',
       fecha: caso.fecha || new Date().toISOString(),
       creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
-      seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : []
+      seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : [],
+      estudiantesInvolucrados: Array.isArray(caso.estudiantesInvolucrados) ? caso.estudiantesInvolucrados : (Array.isArray(caso.estudiantes_involucrados) ? caso.estudiantes_involucrados : [])
     };
     // Nota: proximoSeguimiento se guarda en estudiante.metadata.fechaProximoSeguimiento y en seguimiento[].fechaProximoSeguimiento, no en columna caso
 
