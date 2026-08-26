@@ -123,21 +123,12 @@ const DashboardView = (() => {
         const fechaFormateada = segDateObj.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
         const primerEstId = listaEsts.length > 0 ? listaEsts[0].id : (caso.estudianteId || caso.estudiante_id || null);
-
-        alertasPorCategoria[tipoKey].push({
-          casoId: caso.id,
-          estudianteId: primerEstId,
-          tituloCaso: caso.titulo || 'Caso en Seguimiento',
-          estNombre,
-          cursoNombre,
-          fechaStr: segDateStr,
-          fechaFormateada,
-          horaStr,
-          isToday,
-          isOverdue,
-          textoSeguimiento: item.segTexto,
-          timestamp: segDateObj.getTime()
-        });
+        // FIX: deduplicar mismo caso+estudiante — solo fecha más reciente (evita Vencido+HOY duplicados)
+        const dedupKey = `${caso.id}::${primerEstId||''}::${tipoKey}`;
+        const idxExist = alertasPorCategoria[tipoKey].findIndex(a => `${a.casoId}::${a.estudianteId||''}::${tipoKey}` === dedupKey);
+        const nuevoAlerta = { casoId: caso.id, estudianteId: primerEstId, tituloCaso: caso.titulo || 'Caso en Seguimiento', estNombre, cursoNombre, fechaStr: segDateStr, fechaFormateada, horaStr, isToday, isOverdue, textoSeguimiento: item.segTexto, timestamp: segDateObj.getTime() };
+        if (idxExist === -1) alertasPorCategoria[tipoKey].push(nuevoAlerta);
+        else if (nuevoAlerta.timestamp > alertasPorCategoria[tipoKey][idxExist].timestamp) alertasPorCategoria[tipoKey][idxExist] = nuevoAlerta;
       });
     });
 
