@@ -1473,12 +1473,16 @@ const DashboardView = (() => {
             // Eliminar físicamente del DOM al terminar la animación para garantizar que desaparezca
             setTimeout(() => {
               el.remove();
-              // Si no quedan alertas, ocultar la sección completa para no dejar marco vacío
+              // Si no quedan más alertas en la sección, ocultar la sección completa para no dejar marco vacío
               setTimeout(()=>{
                 const secV = document.getElementById('seccion-seguimientos-vencidos');
                 if(secV && secV.querySelectorAll('[id^="alerta-"]').length===0) secV.style.display='none';
                 const secH = document.getElementById('seccion-alertas-seguimiento');
                 if(secH && secH.querySelectorAll('[id^="alerta-"]').length===0) secH.style.display='none';
+                const secC = document.getElementById('seccion-alertas-compromisos');
+                if(secC && secC.querySelectorAll('[id^="alerta-"]').length===0) secC.style.display='none';
+                const secCC = document.getElementById('seccion-compromisos');
+                if(secCC && secCC.querySelectorAll('[id^="alerta-"]').length===0) secCC.style.display='none';
               }, 50);
             }, 350);
           }, 150);
