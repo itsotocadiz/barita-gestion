@@ -1484,7 +1484,8 @@ const EstudiantesView = {
         if (!est.bitacoraSeguimiento) est.bitacoraSeguimiento = [];
         est.bitacoraSeguimiento.unshift(entry);
         
-        await Storage.saveEstudiante(est, true); // bypassPermission = true to allow all profiles to log
+        await Storage.saveEstudiante(est, true);
+        try{ if(typeof DashboardView!=='undefined' && DashboardView.limpiarVistoParaNuevoSeguimiento) DashboardView.limpiarVistoParaNuevoSeguimiento(null, estId); }catch(_e){}
       } else {
         // Guardar en seguimiento de caso
         const caso = Storage.getCasoById ? Storage.getCasoById(casoId) : null;
@@ -1495,7 +1496,8 @@ const EstudiantesView = {
         if (fechaProximoVal) caso.proximoSeguimiento = fechaProximoVal;
         
         await Storage.saveCaso(caso);
-        if (est) await Storage.saveEstudiante(est, true); // bypassPermission = true to allow all profiles to log
+        if (est) await Storage.saveEstudiante(est, true);
+        try{ if(typeof DashboardView!=='undefined' && DashboardView.limpiarVistoParaNuevoSeguimiento) DashboardView.limpiarVistoParaNuevoSeguimiento(caso ? caso.id : casoId, estId); }catch(_e){}
       }
       
       App.closeModal();

@@ -1278,7 +1278,9 @@ const DashboardView = (() => {
 
             await Storage.saveEstudiante(est, true); // bypassPermission = true to allow all profiles to save tracking logs
           }
+          try{ DashboardView.limpiarVistoParaNuevoSeguimiento(casoId, estId); }catch(_e){}
         }
+        try{ DashboardView.limpiarVistoParaNuevoSeguimiento(casoId, null); if(estId) DashboardView.limpiarVistoParaNuevoSeguimiento(null, estId); }catch(_e){}
       } else if (accion === 'cerrar_caso') {
         // Cerrar Caso - si viene de alerta directa de estudiante (est_...), cerrar bandera del estudiante y sus casos
         if (casoId && String(casoId).startsWith('est_')) {
@@ -1493,7 +1495,21 @@ const DashboardView = (() => {
     }
   }
 
-  return { render, switchTab, descartarAlertaCompromiso, abrirQuickSeguimiento, cerrarQuickSeguimiento, onQuickAccionChange, guardarQuickSeguimiento, canExecuteAlta, marcarAlertaComoLeida, abrirModalAlta, cerrarModalAlta, onAltaResolucionChange, guardarAltaCompromiso };
+  function limpiarVistoParaNuevoSeguimiento(casoId, estudianteId){
+    const ids=[casoId, estudianteId].filter(Boolean).map(String);
+    Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('barita_alerta_leida_') && ids.some(id=>k.includes(id))){
+        localStorage.removeItem(k);
+      }
+    });
+    try{
+      const casos=Storage.getCasos?.()||[]; const ests=Storage.getEstudiantes?.()||[];
+      casos.forEach(c=>{ if(ids.includes(String(c.id))) c.seguimiento?.forEach(s=> delete s.is_seen_confirm); });
+      ests.forEach(e=>{ if(ids.includes(String(e.id))) e.bitacoraSeguimiento?.forEach(b=> delete b.is_seen_confirm); });
+    }catch(_e){}
+  }
+
+  return { render, switchTab, descartarAlertaCompromiso, abrirQuickSeguimiento, cerrarQuickSeguimiento, onQuickAccionChange, guardarQuickSeguimiento, canExecuteAlta, marcarAlertaComoLeida, limpiarVistoParaNuevoSeguimiento, abrirModalAlta, cerrarModalAlta, onAltaResolucionChange, guardarAltaCompromiso };
 })();
 
 window.DashboardView = DashboardView;

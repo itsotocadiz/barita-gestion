@@ -705,6 +705,8 @@ const CasosView = {
         c.estado = 'en_proceso';
       }
       await Storage.saveCaso(c);
+      // FIX: al crear nuevo, limpia visto previo para que reaparezca con nueva fecha para todos
+      try{ if(typeof DashboardView!=='undefined' && DashboardView.limpiarVistoParaNuevoSeguimiento) DashboardView.limpiarVistoParaNuevoSeguimiento(c.id, null); }catch(_e){}
       
       if (c.estudiantesInvolucrados && c.estudiantesInvolucrados.length > 0) {
         for (const estId of c.estudiantesInvolucrados) {
@@ -731,6 +733,7 @@ const CasosView = {
             await Storage.saveEstudiante(est, true);
           }
         }
+        try{ for(const eid of c.estudiantesInvolucrados||[]) if(typeof DashboardView!=='undefined' && DashboardView.limpiarVistoParaNuevoSeguimiento) DashboardView.limpiarVistoParaNuevoSeguimiento(null, eid); }catch(_e){}
       }
     }
     
