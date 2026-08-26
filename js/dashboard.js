@@ -1486,13 +1486,7 @@ const DashboardView = (() => {
       const key = `barita_alerta_leida_${casoId||''}_${estudianteId||''}_${role}`;
       try { localStorage.setItem(key, 'true'); } catch(_e){}
       App.showToast('Alerta marcada como leída.', 'success');
-      
-      // Recargar la vista del dashboard
-      if (typeof App.handleRoute === 'function') {
-        App.handleRoute(true);
-      } else {
-        location.reload();
-      }
+      // No recargar dashboard: el DOM ya se ocultó con animación, y el próximo F5 filtrará por localStorage
     } catch (e) {
       console.error(e);
       App.showToast('No se pudo marcar como leído.', 'danger');
