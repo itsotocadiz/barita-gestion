@@ -12,6 +12,15 @@ const DashboardView = (() => {
     { key: 'pie', titulo: 'Estudiantes PIE', color: '#0ea5e9', bg: '#f0f9ff', border: '#bae6fd', icon: Icons.get('puzzle', 18) }
   ];
 
+  function getSeenKey(casoId, estudianteId, role){
+    const r=String(role||'profesor').toLowerCase().trim();
+    return `barita_alerta_leida_${String(casoId||'').trim()}_${String(estudianteId||'').trim()}_${r}`;
+  }
+  function isAlertaLeida(casoId, estudianteId){
+    const cleanRole=(Auth.userProfile?.role||Auth.currentRole||'profesor').toLowerCase().trim();
+    if(localStorage.getItem(getSeenKey(casoId, estudianteId, cleanRole))==='true') return true;
+    return false;
+  }
   function obtenerAlertasSeguimiento() {
     const casos = (typeof Storage !== 'undefined' && typeof Storage.getCasos === 'function') ? Storage.getCasos() : [];
     const estudiantes = (typeof Storage !== 'undefined' && typeof Storage.getEstudiantes === 'function') ? Storage.getEstudiantes() : [];
@@ -31,12 +40,10 @@ const DashboardView = (() => {
     casos.forEach(caso => {
       if (!caso || caso.estado === 'cerrado') return;
 
-      // Omitir si ya fue marcado como leído por el rol actual (local por rol, no bitácora)
       const primerEstIdTmp = (caso.estudiantesInvolucrados && caso.estudiantesInvolucrados[0]) ? caso.estudiantesInvolucrados[0] : (caso.estudianteId || caso.estudiante_id || '');
-      const keyTmp = `barita_alerta_leida_${caso.id}_${primerEstIdTmp}_${cleanRole}`;
-      let yaLeidoLocal = false; try{ yaLeidoLocal = localStorage.getItem(keyTmp)==='true'; }catch(_e){}
+      if (isAlertaLeida(caso.id, primerEstIdTmp)) return;
       const yaLeidoLegacy = Array.isArray(caso.seguimiento) && caso.seguimiento.some(s => s && s.is_seen_confirm && String(s.role).toLowerCase().trim() === cleanRole);
-      if (yaLeidoLocal || yaLeidoLegacy) return;
+      if (yaLeidoLegacy) return;
 
       let tipoKey = caso.tipo || 'seguimiento';
       if (!alertasPorCategoria[tipoKey]) tipoKey = 'seguimiento';
@@ -136,11 +143,9 @@ const DashboardView = (() => {
     estudiantes.forEach(est => {
       if (!est) return;
       
-      // Omitir si ya fue marcado como leído por el rol actual (local, no bitácora)
-      const keyEst = `barita_alerta_leida_est_${est.id}_${est.id}_${cleanRole}`;
-      let yaLeidoLocalEst = false; try{ yaLeidoLocalEst = localStorage.getItem(keyEst)==='true'; }catch(_e){}
+      if (isAlertaLeida('est_'+est.id, est.id)) return;
       const yaLeidoLegacyEst = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b => b && b.is_seen_confirm && String(b.role).toLowerCase().trim() === cleanRole);
-      if (yaLeidoLocalEst || yaLeidoLegacyEst) return;
+      if (yaLeidoLegacyEst) return;
 
       const categorias = [];
       if (est.enSeguimiento) categorias.push('seguimiento');
