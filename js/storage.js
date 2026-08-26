@@ -711,8 +711,6 @@ Object.assign(Storage, {
       nombres: est.nombres || '',
       apellidos: est.apellidos || '',
       rut: est.rut || '',
-      curso: est.curso || null,
-      apoderado: est.apoderado || null,
       colegio_id: String(est.colegio_id || est.colegioId || Storage.activeSchool || 'demo'),
       fecha_nacimiento: fechaNac,
       metadata: metadata
