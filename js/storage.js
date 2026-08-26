@@ -256,16 +256,8 @@ const Storage = {
       }
     }
 
-    if (this.activeSchool === targetSchool && this.isReady) {
-      const today = BARITA_hoyChileISO();
-      let lastDate = '';
-      try { lastDate = localStorage.getItem('barita_last_sync_date') || ''; } catch (_e) {}
-      if (lastDate === today) {
-        console.log("setSchool - Colegio es el mismo, mismo día, cache ready. Evitando limpiar cache.");
-        return Promise.resolve();
-      }
-      console.log("setSchool - Nuevo día detectado. Forzando refresh del cache.");
-    }
+    // FIX: no evitar refresh por fecha (evita fantasma tras cerrar)
+    // if (this.activeSchool === targetSchool && this.isReady) return;
 
     this.activeSchool = targetSchool;
     try { localStorage.setItem('barita_active_school', targetSchool); } catch (_e) {}
@@ -351,9 +343,7 @@ Object.assign(Storage, {
   async initRealtimeSync() {
     if (window.Auth && Auth.isLoggingOut) return Promise.resolve();
     this.loadLocalMutations();
-    if (this.isReady) {
-      return Promise.resolve();
-    }
+    // FIX: no bloquear re-fetch si ya está ready (evita fantasma tras cerrar)
 
     return new Promise(async (resolve) => {
       const collections = [
@@ -748,6 +738,12 @@ Object.assign(Storage, {
         } else {
           console.error('Error guardando en Supabase:', error);
           App.showToast("Error guardando en la base de datos: " + error.message, "danger");
+        }
+      } else if (!error) {
+        // éxito: evict local para no fantasma
+        if (this.localMutations.estudiantes && this.localMutations.estudiantes[est.id]) {
+          delete this.localMutations.estudiantes[est.id];
+          this.persistLocalMutations();
         }
       }
       
@@ -1654,14 +1650,21 @@ Object.assign(Storage, {
     };
     // Nota: proximoSeguimiento se guarda en estudiante.metadata.fechaProximoSeguimiento y en seguimiento[].fechaProximoSeguimiento, no en columna caso
 
+    let _saveCasoErr = null;
     try {
       const { error } = await window.getSupabaseClient().from('casos').upsert(cleanPayload);
       if (error) {
         console.error("Error al guardar caso en Supabase:", error);
         App.showToast("No se pudo guardar el caso en el servidor: " + error.message, "danger");
+        _saveCasoErr = error;
       }
     } catch (e) {
       console.warn("Excepción al guardar caso en Supabase:", e);
+      _saveCasoErr = e;
+    }
+    if (!_saveCasoErr && this.localMutations.casos && this.localMutations.casos[caso.id]) {
+      delete this.localMutations.casos[caso.id];
+      this.persistLocalMutations();
     }
   },
 
