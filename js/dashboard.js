@@ -530,7 +530,9 @@ const DashboardView = (() => {
             </div>
             <div style="font-size: 0.85rem; color: #991b1b; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">${Icons.get('alert-triangle', 14)} Infracción registrada: ${item.infraccionFecha}</div>
           </div>
-          <div>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-success inline-flex items-center gap-1" onclick="window.DashboardView.abrirQuickSeguimiento('', '${item.est.id}', 'Compromiso Incumplido', '${item.estNombre.replace(/'/g, "\\'")}')" style="font-weight:600; padding:0.4rem 0.85rem; font-size:0.85rem; border:none; background:#10b981; color:white;">${Icons.get('check', 14)} Registrar Seguimiento</button>
+            <button class="btn btn-sm btn-info inline-flex items-center gap-1" onclick="window.DashboardView.marcarAlertaComoLeida('', '${item.est.id}', 'compromiso')" style="font-weight:600; padding:0.4rem 0.85rem; font-size:0.85rem; border:none; background:var(--primary); color:white;">${Icons.get('eye', 14)} Marcar como Leído</button>
             <a href="#/estudiantes/${item.est.id}" class="btn btn-sm btn-danger inline-flex items-center gap-1" style="font-weight: 600; padding: 0.4rem 0.85rem; font-size: 0.85rem;">${Icons.get('eye', 14)} Ver Ficha</a>
             <button class="btn btn-sm btn-outline-secondary" onclick="window.DashboardView.descartarAlertaCompromiso('${item.est.id}')" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; border-color: #cbd5e1;">✕</button>
           </div>
