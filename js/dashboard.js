@@ -503,8 +503,9 @@ const DashboardView = (() => {
         if (esVencido) {
           compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: est.compromisoFechaTermino, infraccionDesc: 'Periodo vencido pendiente de alta', isToday: false, isOverdue: true });
         } else {
-          const yaLeido = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b => b && b.is_seen_confirm && String(b.role).toLowerCase().trim() === cleanRole);
-          if (yaLeido) return;
+          let yaLeidoLocalComp2=false; try{ yaLeidoLocalComp2=localStorage.getItem(`barita_alerta_leida__${est.id}_${cleanRole}`)==='true'; }catch(_e){}
+          const yaLeidoLegacy2 = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b => b && b.is_seen_confirm && String(b.role).toLowerCase().trim() === cleanRole);
+          if (yaLeidoLocalComp2 || yaLeidoLegacy2) return;
           compromisosCumplidos.push({ est, estNombre, cursoNombre, fechaTermino: est.compromisoFechaTermino, isToday: est.compromisoFechaTermino === todayStr });
         }
       }
