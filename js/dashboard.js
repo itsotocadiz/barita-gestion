@@ -14,11 +14,15 @@ const DashboardView = (() => {
 
   function getSeenKey(casoId, estudianteId, role){
     const r=String(role||'profesor').toLowerCase().trim();
-    return `barita_alerta_leida_${String(casoId||'').trim()}_${String(estudianteId||'').trim()}_${r}`;
+    const school=(typeof Storage!=='undefined'&&Storage.activeSchool||'demo').toString().trim();
+    return `barita_alerta_leida_${school}_${String(casoId||'').trim()}_${String(estudianteId||'').trim()}_${r}`;
   }
   function isAlertaLeida(casoId, estudianteId){
     const cleanRole=(Auth.userProfile?.role||Auth.currentRole||'profesor').toLowerCase().trim();
     if(localStorage.getItem(getSeenKey(casoId, estudianteId, cleanRole))==='true') return true;
+    // compat: claves viejas sin colegio
+    const oldKey=`barita_alerta_leida_${String(casoId||'').trim()}_${String(estudianteId||'').trim()}_${cleanRole}`;
+    if(localStorage.getItem(oldKey)==='true') return true;
     return false;
   }
   function obtenerAlertasSeguimiento() {
@@ -1506,10 +1510,12 @@ const DashboardView = (() => {
       }
     });
 
-    // 2. Guardado local por rol + bitácora para compromiso (persiste al navegar)
+    // 2. Guardado local por rol (con colegio) + bitácora para compromiso
     try {
-      const key = `barita_alerta_leida_${casoId||''}_${estudianteId||''}_${role}`;
+      const key = getSeenKey(casoId, estudianteId, role);
       try { localStorage.setItem(key, 'true'); } catch(_e){}
+      // compat: también guarda clave vieja sin colegio por si hay cache vieja
+      try{ localStorage.setItem(`barita_alerta_leida_${String(casoId||'').trim()}_${String(estudianteId||'').trim()}_${role}`, 'true'); }catch(_e){}
       if (tipoAlerta==='compromiso' && estudianteId) {
         try{
           const est=Storage.getEstudianteById(estudianteId);
