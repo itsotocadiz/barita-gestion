@@ -961,6 +961,13 @@ const DashboardView = (() => {
     `;
 
     if (!container) return;
+    // FIX: si modal está abierto, no destruir dashboard (paridad con NotasView:88)
+    const qmGuard = document.getElementById('quick-seguimiento-modal');
+    const isQuickOpen = qmGuard && qmGuard.style.display !== 'none' && !qmGuard.classList.contains('hidden');
+    if (isQuickOpen) {
+      try { document.body.appendChild(qmGuard); qmGuard.style.display='flex'; qmGuard.classList.remove('hidden'); qmGuard.style.zIndex='9999'; } catch(_e){}
+      return;
+    }
     container.innerHTML = html;
     // Portal del modal fuera de app-content para que sobreviva a navegación
     try { DashboardView.ensureQuickModalPortal(); } catch(_e) {}
@@ -995,8 +1002,8 @@ const DashboardView = (() => {
       const estNombre = document.getElementById('quick-modal-est-nombre')?.innerText || '';
       const casoTitulo = document.getElementById('quick-modal-caso-titulo')?.innerText || '';
       const key = getQuickDraftKey(casoId, estId);
-      if (!texto && !fecha) { localStorage.removeItem(key); return; }
-      localStorage.setItem(key, JSON.stringify({casoId, estId, texto, fecha, accion, estNombre, casoTitulo, ts: Date.now()}));
+      const isOpen = (()=>{ const m=document.getElementById('quick-seguimiento-modal'); return !!(m && m.style.display!=='none' && !m.classList.contains('hidden')); })();
+      localStorage.setItem(key, JSON.stringify({casoId, estId, texto, fecha, accion, estNombre, casoTitulo, ts: Date.now(), isOpen: !!isOpen}));
     } catch(_e) {}
   }
   function loadQuickDraft(casoId, estId) {
