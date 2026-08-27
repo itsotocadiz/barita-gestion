@@ -492,10 +492,13 @@ const DashboardView = (() => {
       const estNombre = `${est.nombres} ${est.apellidos}`;
 
       if (res.estado === 'incumplido' && !est.compromisoDescartado) {
-        const isToday = res.infraccionFecha === todayStr;
-        const isOverdue = res.infraccionFecha < todayStr;
-        if (isToday || isOverdue) {
-          compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: res.infraccionFecha || est.compromisoFechaTermino, infraccionDesc: res.infraccionDesc || 'Anotación negativa registrada', isToday, isOverdue });
+        let yaLeidoInc=false; try{ yaLeidoInc=localStorage.getItem(`barita_alerta_leida__${est.id}_${cleanRole}`)==='true'; }catch(_e){}
+        const yaLeidoLegacyInc = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b=>b.is_seen_confirm && String(b.role).toLowerCase().trim()===cleanRole);
+        if (yaLeidoInc || yaLeidoLegacyInc) { /* respeta Marcar como leído */ }
+        else {
+          const isToday = res.infraccionFecha === todayStr;
+          const isOverdue = res.infraccionFecha < todayStr;
+          if (isToday || isOverdue) compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: res.infraccionFecha || est.compromisoFechaTermino, infraccionDesc: res.infraccionDesc || 'Anotación negativa registrada', isToday, isOverdue });
         }
       } else if ((res.estado === 'cumplido' || res.estado === 'cumplido_pendiente') && !est.compromisoDescartado) {
         // Vencido sin infracción pero fecha pasada → mostrar como vencido para todos (no respeta yaLeido)
@@ -1503,10 +1506,22 @@ const DashboardView = (() => {
       }
     });
 
-    // 2. Guardado local por rol (no bitácora) - solo quien marca deja de ver
+    // 2. Guardado local por rol + bitácora para compromiso (persiste al navegar)
     try {
       const key = `barita_alerta_leida_${casoId||''}_${estudianteId||''}_${role}`;
       try { localStorage.setItem(key, 'true'); } catch(_e){}
+      if (tipoAlerta==='compromiso' && estudianteId) {
+        try{
+          const est=Storage.getEstudianteById(estudianteId);
+          if(est){
+            if(!Array.isArray(est.bitacoraSeguimiento)) est.bitacoraSeguimiento=[];
+            if(!est.bitacoraSeguimiento.some(b=>b.is_seen_confirm && String(b.role).toLowerCase().trim()===role)){
+              est.bitacoraSeguimiento.push({id:'seen_'+Date.now(), fecha:new Date().toISOString(), is_seen_confirm:true, role, texto:'', registradoPor: Auth.currentUser?.email||'Sistema'});
+              await Storage.saveEstudiante(est, true);
+            }
+          }
+        }catch(_e){}
+      }
       App.showToast('Alerta marcada como leída.', 'success');
       // No recargar dashboard: el DOM ya se ocultó con animación, y el próximo F5 filtrará por localStorage
     } catch (e) {
