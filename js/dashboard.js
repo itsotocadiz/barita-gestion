@@ -1096,9 +1096,13 @@ const DashboardView = (() => {
     window.addEventListener('beforeunload', (e) => {
       if (isQuickModalDirty()) { e.preventDefault(); e.returnValue = 'Tienes un seguimiento sin guardar. ¿Salir?'; }
     });
-    // visibilitychange: al volver de otra ventana/pestaña, re-afirmar portal y guardar borrador al salir
+    // visibilitychange: al volver de otra ventana/pestaña, re-afirmar portal y guardar borrador al salir (incluso vacía si está abierta)
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden' && isQuickModalDirty()) saveQuickDraft();
+      if (document.visibilityState === 'hidden') {
+        const mHidden = document.getElementById('quick-seguimiento-modal');
+        const isVisibleHidden = mHidden && mHidden.style.display !== 'none' && !mHidden.classList.contains('hidden');
+        if (isVisibleHidden) saveQuickDraft();
+      }
       if (document.visibilityState === 'visible') {
         const m = document.getElementById('quick-seguimiento-modal');
         if (m) {
