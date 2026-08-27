@@ -1023,7 +1023,7 @@ const DashboardView = (() => {
   function ensureQuickModalPortal() {
     if (document.getElementById('quick-seguimiento-modal')) return;
     const html = `
-      <div id="quick-seguimiento-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quick-modal-titulo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.4); backdrop-filter:blur(4px); z-index:1050; align-items:center; justify-content:center;">
+      <div id="quick-seguimiento-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quick-modal-titulo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.4); backdrop-filter:blur(4px); z-index:9998; align-items:center; justify-content:center;">
         <div class="modal-container" style="width:100%; max-width:520px; margin:1rem; border-radius:16px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1); overflow:hidden; background:var(--bg-card); border:1px solid var(--border-card); max-height:90vh; display:flex; flex-direction:column;">
           <div class="modal-header" style="background:var(--bg-card); color:var(--text-primary); padding:1rem 1.25rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-card);">
             <h4 style="margin:0; font-size:1.15rem; font-weight:700;" id="quick-modal-titulo">Registrar Seguimiento</h4>
@@ -1089,6 +1089,19 @@ const DashboardView = (() => {
     window.addEventListener('beforeunload', (e) => {
       if (isQuickModalDirty()) { e.preventDefault(); e.returnValue = 'Tienes un seguimiento sin guardar. ¿Salir?'; }
     });
+    // visibilitychange: al volver de otra ventana/pestaña, re-afirmar portal y guardar borrador al salir
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && isQuickModalDirty()) saveQuickDraft();
+      if (document.visibilityState === 'visible') {
+        const m = document.getElementById('quick-seguimiento-modal');
+        if (m && !m.classList.contains('hidden') && m.style.display !== 'none') {
+          document.body.appendChild(m);
+          m.style.display = 'flex';
+          m.style.zIndex = '9998';
+        }
+      }
+    });
+    window.addEventListener('pagehide', () => { if (isQuickModalDirty()) saveQuickDraft(); });
   }
 
   function switchTab(tabId, btnElement) {
