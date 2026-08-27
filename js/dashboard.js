@@ -496,23 +496,23 @@ const DashboardView = (() => {
       const estNombre = `${est.nombres} ${est.apellidos}`;
 
       if (res.estado === 'incumplido' && !est.compromisoDescartado) {
-        let yaLeidoInc=false; try{ yaLeidoInc=localStorage.getItem(`barita_alerta_leida__${est.id}_${cleanRole}`)==='true'; }catch(_e){}
+        let yaLeidoInc=false; try{ const kDia=`barita_alerta_leida__${est.id}_${cleanRole}_${todayStr}`; yaLeidoInc=localStorage.getItem(`barita_alerta_leida__${est.id}_${cleanRole}`)==='true' || localStorage.getItem(kDia)==='true'; }catch(_e){}
         const yaLeidoLegacyInc = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b=>b.is_seen_confirm && String(b.role).toLowerCase().trim()===cleanRole);
-        if (yaLeidoInc || yaLeidoLegacyInc) { /* respeta Marcar como leído */ }
+        if (yaLeidoInc || yaLeidoLegacyInc) { /* visto hoy, no mostrar */ }
         else {
           const isToday = res.infraccionFecha === todayStr;
           const isOverdue = res.infraccionFecha < todayStr;
           if (isToday || isOverdue) compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: res.infraccionFecha || est.compromisoFechaTermino, infraccionDesc: res.infraccionDesc || 'Anotación negativa registrada', isToday, isOverdue });
         }
       } else if ((res.estado === 'cumplido' || res.estado === 'cumplido_pendiente') && !est.compromisoDescartado) {
-        // Vencido sin infracción pero fecha pasada → mostrar como vencido para todos (no respeta yaLeido)
+        // Vencido sin infracción pero fecha pasada → respeta visto por día
         const esVencido = est.compromisoFechaTermino && est.compromisoFechaTermino < todayStr;
         if (esVencido) {
-          compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: est.compromisoFechaTermino, infraccionDesc: 'Periodo vencido pendiente de alta', isToday: false, isOverdue: true });
+          if (isAlertaLeida('', est.id)) { /* visto hoy */ } else {
+            compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: est.compromisoFechaTermino, infraccionDesc: 'Periodo vencido pendiente de alta', isToday: false, isOverdue: true });
+          }
         } else {
-          let yaLeidoLocalComp2=false; try{ yaLeidoLocalComp2=localStorage.getItem(`barita_alerta_leida__${est.id}_${cleanRole}`)==='true'; }catch(_e){}
-          const yaLeidoLegacy2 = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b => b && b.is_seen_confirm && String(b.role).toLowerCase().trim() === cleanRole);
-          if (yaLeidoLocalComp2 || yaLeidoLegacy2) return;
+          if (isAlertaLeida('', est.id)) return;
           compromisosCumplidos.push({ est, estNombre, cursoNombre, fechaTermino: est.compromisoFechaTermino, isToday: est.compromisoFechaTermino === todayStr });
         }
       }
