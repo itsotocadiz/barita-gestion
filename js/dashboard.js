@@ -92,10 +92,10 @@ const DashboardView = (() => {
         }
         if (isNaN(segDateObj.getTime())) return;
         const segDateStr = `${segDateObj.getFullYear()}-${String(segDateObj.getMonth() + 1).padStart(2, '0')}-${String(segDateObj.getDate()).padStart(2, '0')}`;
-        if (segDateStr > todayStr) return;
-
+        // FIX vinculado: no descartar futuro antes de dedup — se guarda con isToday/isOverdue=false para que no aparezca hoy pero reemplace al vencido viejo
         const isToday = segDateStr === todayStr;
         const isOverdue = segDateStr < todayStr;
+        const isFuture = segDateStr > todayStr;
 
         let listaEsts = [];
         if (Array.isArray(caso.estudiantesInvolucrados) && caso.estudiantesInvolucrados.length > 0) {
@@ -211,6 +211,44 @@ const DashboardView = (() => {
             timestamp: segDateObj.getTime()
           });
         }
+      });
+    });
+
+    // FIX vinculado: si el estudiante tiene próximo seguimiento futuro, ocultar alertas vencidas/hoy de ese estudiante (reprogramado)
+    const futurosEstIds = new Set();
+    estudiantes.forEach(est => {
+      const f = est.fechaProximoSeguimiento || est.fechaProximo || null;
+      if (!f) return;
+      let ymd = '';
+      if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f)) ymd = f.substring(0,10);
+      else { const d=new Date(f); if(!isNaN(d)) ymd = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+      if (ymd && ymd > todayStr) futurosEstIds.add(String(est.id));
+    });
+    // También futuros en casos (proximoSeguimiento futuro) — considerar
+    casos.forEach(c => {
+      const f = c.proximoSeguimiento || c.fechaProximoSeguimiento || null;
+      if (!f) return;
+      let ymd = '';
+      if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f)) ymd = f.substring(0,10);
+      else { const d=new Date(f); if(!isNaN(d)) ymd = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+      if (ymd && ymd > todayStr) {
+        const eId = c.estudianteId || c.estudiante_id || c.estudiante_id_ref || (Array.isArray(c.estudiantesInvolucrados)?c.estudiantesInvolucrados[0]:null);
+        if (eId) futurosEstIds.add(String(eId));
+        // además agregar por seguimiento futuro
+        if (Array.isArray(c.seguimiento)) c.seguimiento.forEach(s=>{
+          const rf = s.fechaProximoSeguimiento || s.fechaProximo || null;
+          if (!rf) return;
+          let y=''; if(typeof rf==='string' && /^\d{4}-\d{2}-\d{2}/.test(rf)) y=rf.substring(0,10); else {const dd=new Date(rf); if(!isNaN(dd)) y=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;}
+          if (y && y > todayStr && eId) futurosEstIds.add(String(eId));
+        });
+      }
+    });
+    CATEGORIAS_ALERTAS.forEach(c => {
+      if (futurosEstIds.size===0) return;
+      alertasPorCategoria[c.key] = (alertasPorCategoria[c.key]||[]).filter(a=>{
+        if (!a.estudianteId) return true;
+        if (futurosEstIds.has(String(a.estudianteId)) && (a.isOverdue || a.isToday)) return false;
+        return true;
       });
     });
 
@@ -500,8 +538,16 @@ const DashboardView = (() => {
         const yaLeidoLegacyInc = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b=>b.is_seen_confirm && String(b.role).toLowerCase().trim()===cleanRole);
         if (yaLeidoInc || yaLeidoLegacyInc) { /* visto hoy, no mostrar */ }
         else {
-          const isToday = res.infraccionFecha === todayStr;
-          const isOverdue = res.infraccionFecha < todayStr;
+          // infraccionFecha viene como DD/MM/YYYY desde rice_engine, convertir a YYYY-MM-DD para comparar
+          let ymdInf = (res.infraccionFecha || '').toString().trim();
+          if (ymdInf.includes('/')) {
+            const p = ymdInf.split('/');
+            if (p.length===3) ymdInf = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+          } else {
+            ymdInf = ymdInf.substring(0,10);
+          }
+          const isToday = ymdInf === todayStr;
+          const isOverdue = ymdInf < todayStr;
           if (isToday || isOverdue) compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: res.infraccionFecha || est.compromisoFechaTermino, infraccionDesc: res.infraccionDesc || 'Anotación negativa registrada', isToday, isOverdue });
         }
       } else if ((res.estado === 'cumplido' || res.estado === 'cumplido_pendiente') && !est.compromisoDescartado) {
@@ -912,55 +958,137 @@ const DashboardView = (() => {
         ` : ''}
         ${contentHtml}
       </div>
+    `;
 
-      <!-- MODAL DE ACCION RAPIDA SEGUIMIENTO -->
-      <div id="quick-seguimiento-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1050; align-items: center; justify-content: center;">
-        <div class="card" style="width: 100%; max-width: 500px; margin: 1rem; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); overflow: hidden; background: white;">
-          <div class="card-header" style="background: #1e293b; color: white; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center;">
-            <h4 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: white;" id="quick-modal-titulo">Registrar Seguimiento</h4>
-            <button onclick="window.DashboardView.cerrarQuickSeguimiento()" style="background:transparent; border:none; color:white; font-size:1.25rem; cursor:pointer;">✕</button>
+    if (!container) return;
+    container.innerHTML = html;
+    // Portal del modal fuera de app-content para que sobreviva a navegación
+    try { DashboardView.ensureQuickModalPortal(); } catch(_e) {}
+  }
+
+  function getQuickDraftKey(casoId, estId) {
+    try {
+      const school = (typeof Storage!=='undefined' && Storage.activeSchool) ? Storage.activeSchool : 'demo';
+      const uid = (typeof Auth!=='undefined' && Auth.currentUser && (Auth.currentUser.id||Auth.currentUser.uid)) ? (Auth.currentUser.id||Auth.currentUser.uid) : 'anon';
+      const cid = (casoId||'').toString().trim() || 'noCaso';
+      const eid = (estId||'').toString().trim() || 'noEst';
+      return `barita_quick_draft_${school}_${uid}_${cid}_${eid}`;
+    } catch(_e) { return 'barita_quick_draft_demo_anon'; }
+  }
+  function isQuickModalDirty() {
+    try {
+      const t = document.getElementById('quick-modal-texto')?.value?.trim() || '';
+      const f = document.getElementById('quick-modal-proximo-fecha')?.value?.trim() || '';
+      const a = document.getElementById('quick-modal-accion')?.value || '';
+      const modal = document.getElementById('quick-seguimiento-modal');
+      const visible = modal && modal.style.display !== 'none' && !modal.classList.contains('hidden');
+      return visible && (t !== '' || f !== '' || (a && a !== 'registrar'));
+    } catch(_e) { return false; }
+  }
+  function saveQuickDraft() {
+    try {
+      const casoId = document.getElementById('quick-modal-caso-id')?.value || '';
+      const estId = document.getElementById('quick-modal-est-id')?.value || '';
+      const texto = document.getElementById('quick-modal-texto')?.value || '';
+      const fecha = document.getElementById('quick-modal-proximo-fecha')?.value || '';
+      const accion = document.getElementById('quick-modal-accion')?.value || '';
+      const estNombre = document.getElementById('quick-modal-est-nombre')?.innerText || '';
+      const casoTitulo = document.getElementById('quick-modal-caso-titulo')?.innerText || '';
+      const key = getQuickDraftKey(casoId, estId);
+      if (!texto && !fecha) { localStorage.removeItem(key); return; }
+      localStorage.setItem(key, JSON.stringify({casoId, estId, texto, fecha, accion, estNombre, casoTitulo, ts: Date.now()}));
+    } catch(_e) {}
+  }
+  function loadQuickDraft(casoId, estId) {
+    try {
+      const key = getQuickDraftKey(casoId, estId);
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      if (!d || !d.ts || Date.now() - d.ts > 24*60*60*1000) { localStorage.removeItem(key); return null; }
+      return d;
+    } catch(_e) { return null; }
+  }
+  function clearQuickDraft(casoId, estId) {
+    try {
+      if (casoId!==undefined || estId!==undefined) localStorage.removeItem(getQuickDraftKey(casoId, estId));
+      else {
+        // fallback clear current modal draft
+        const c = document.getElementById('quick-modal-caso-id')?.value || '';
+        const e = document.getElementById('quick-modal-est-id')?.value || '';
+        localStorage.removeItem(getQuickDraftKey(c,e));
+      }
+    } catch(_e) {}
+  }
+  function ensureQuickModalPortal() {
+    if (document.getElementById('quick-seguimiento-modal')) return;
+    const html = `
+      <div id="quick-seguimiento-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quick-modal-titulo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.4); backdrop-filter:blur(4px); z-index:1050; align-items:center; justify-content:center;">
+        <div class="modal-container" style="width:100%; max-width:520px; margin:1rem; border-radius:16px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1); overflow:hidden; background:var(--bg-card); border:1px solid var(--border-card); max-height:90vh; display:flex; flex-direction:column;">
+          <div class="modal-header" style="background:var(--bg-card); color:var(--text-primary); padding:1rem 1.25rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-card);">
+            <h4 style="margin:0; font-size:1.15rem; font-weight:700;" id="quick-modal-titulo">Registrar Seguimiento</h4>
+            <button onclick="window.DashboardView.cerrarQuickSeguimiento()" aria-label="Cerrar modal" style="background:transparent; border:none; color:var(--text-secondary); font-size:1.25rem; cursor:pointer;">✕</button>
           </div>
-          <div class="card-body" style="padding: 1.25rem;">
+          <div class="modal-body" style="padding:1.25rem; overflow-y:auto;">
             <input type="hidden" id="quick-modal-caso-id">
             <input type="hidden" id="quick-modal-est-id">
-            
-            <div style="font-size: 0.9rem; margin-bottom: 1rem; color: #475569; background: #f1f5f9; padding: 0.75rem; border-radius: 6px; border-left: 4px solid #10b981;">
+            <div style="font-size:0.9rem; margin-bottom:1rem; color:var(--text-secondary); background:var(--bg-hover); padding:0.75rem; border-radius:8px; border-left:4px solid var(--primary);">
               <strong>Estudiante:</strong> <span id="quick-modal-est-nombre">-</span><br>
               <strong>Caso / Alerta:</strong> <span id="quick-modal-caso-titulo">-</span>
             </div>
-
-            <div class="form-group" style="margin-bottom: 1rem;">
-              <label class="form-label" style="font-weight: 600; display: block; margin-bottom: 0.4rem; color: var(--text-primary);">Acción a realizar:</label>
-              <select id="quick-modal-accion" class="form-control" style="width: 100%;" onchange="window.DashboardView.onQuickAccionChange()">
+            <div class="form-group" style="margin-bottom:1rem;">
+              <label for="quick-modal-accion" class="form-label" style="font-weight:600; display:block; margin-bottom:0.4rem; color:var(--text-primary);">Acción a realizar:</label>
+              <select id="quick-modal-accion" class="form-control" style="width:100%;" onchange="window.DashboardView.onQuickAccionChange()">
                 <option value="registrar">Registrar Seguimiento en Bitácora (Seguir activo)</option>
                 <option value="cerrar_caso">Cerrar Caso Permanentemente</option>
                 <option value="cerrar_compromiso">Finalizar Compromiso Conductual (Dar de alta)</option>
               </select>
             </div>
-
             <div id="quick-modal-campos-registro">
-              <div class="form-group" style="margin-bottom: 1rem;">
-                <label class="form-label" style="font-weight: 600; display: block; margin-bottom: 0.4rem; color: var(--text-primary);">Observación / Comentario:</label>
-                <textarea id="quick-modal-texto" class="form-control" rows="3" placeholder="Describe brevemente el resultado del seguimiento..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.5rem;"></textarea>
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label for="quick-modal-texto" class="form-label" style="font-weight:600; display:block; margin-bottom:0.4rem; color:var(--text-primary);">Observación / Comentario:</label>
+                <textarea id="quick-modal-texto" class="form-control" rows="3" placeholder="Describe brevemente el resultado del seguimiento..." style="width:100%; border:1px solid var(--border-color); border-radius:8px; padding:0.5rem; background:var(--bg-card); color:var(--text-primary);"></textarea>
               </div>
-
-              <div class="form-group" style="margin-bottom: 1rem;">
-                <label class="form-label" style="font-weight: 600; display: block; margin-bottom: 0.4rem; color: var(--text-primary);">Próximo Seguimiento (Opcional):</label>
-                <input type="date" id="quick-modal-proximo-fecha" class="form-control" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.5rem;">
-                <p class="text-secondary" style="font-size: 0.75rem; margin-top: 0.25rem; margin-bottom: 0;">Agenda una nueva fecha de alerta en el Dashboard.</p>
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label for="quick-modal-proximo-fecha" class="form-label" style="font-weight:600; display:block; margin-bottom:0.4rem; color:var(--text-primary);">Próximo Seguimiento (Opcional):</label>
+                <input type="date" id="quick-modal-proximo-fecha" class="form-control" style="width:100%; border:1px solid var(--border-color); border-radius:8px; padding:0.5rem; background:var(--bg-card); color:var(--text-primary);">
+                <p class="text-secondary" id="quick-modal-help" style="font-size:0.75rem; margin-top:0.25rem; margin-bottom:0;">Agenda una nueva fecha de alerta en el Dashboard.</p>
               </div>
             </div>
           </div>
-          <div style="background: #f8fafc; padding: 0.75rem 1.25rem; text-align: right; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 0.5rem;">
-            <button class="btn btn-secondary" onclick="window.DashboardView.cerrarQuickSeguimiento()" style="padding: 0.45rem 1rem; border-radius: 6px;">Cancelar</button>
-            <button class="btn btn-primary" onclick="window.DashboardView.guardarQuickSeguimiento()" style="padding: 0.45rem 1rem; border-radius: 6px; background: #10b981; border: none; color: white;" id="quick-modal-guardar-btn">Guardar</button>
+          <div class="modal-footer" style="background:var(--bg-hover); padding:0.75rem 1.25rem; text-align:right; border-top:1px solid var(--border-card); display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button class="btn btn-secondary" onclick="window.DashboardView.cerrarQuickSeguimiento()" style="padding:0.45rem 1rem; border-radius:8px;">Cancelar</button>
+            <button class="btn btn-primary" onclick="window.DashboardView.guardarQuickSeguimiento()" style="padding:0.45rem 1rem; border-radius:8px; background:var(--primary); border:none; color:white;" id="quick-modal-guardar-btn">Guardar</button>
           </div>
         </div>
-      </div>
-    `;
-
-    if (!container) return;
-    container.innerHTML = html;
+      </div>`;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = html.trim();
+    const modal = wrap.firstChild;
+    document.body.appendChild(modal);
+    // backdrop click
+    modal.addEventListener('click', (e) => { if (e.target === modal) window.DashboardView.cerrarQuickSeguimiento(); });
+    // autosave
+    const textoEl = document.getElementById('quick-modal-texto');
+    const fechaEl = document.getElementById('quick-modal-proximo-fecha');
+    const accionEl = document.getElementById('quick-modal-accion');
+    let debounce=null;
+    const schedule = () => { clearTimeout(debounce); debounce=setTimeout(saveQuickDraft, 400); };
+    if (textoEl) { textoEl.addEventListener('input', schedule); textoEl.addEventListener('change', schedule); }
+    if (fechaEl) { fechaEl.addEventListener('input', schedule); fechaEl.addEventListener('change', schedule); }
+    if (accionEl) accionEl.addEventListener('change', schedule);
+    // ESC
+    document.addEventListener('keydown', (e) => {
+      const m = document.getElementById('quick-seguimiento-modal');
+      if (e.key === 'Escape' && m && m.style.display !== 'none' && !m.classList.contains('hidden')) {
+        e.stopPropagation();
+        window.DashboardView.cerrarQuickSeguimiento();
+      }
+    });
+    // beforeunload
+    window.addEventListener('beforeunload', (e) => {
+      if (isQuickModalDirty()) { e.preventDefault(); e.returnValue = 'Tienes un seguimiento sin guardar. ¿Salir?'; }
+    });
   }
 
   function switchTab(tabId, btnElement) {
@@ -992,25 +1120,71 @@ const DashboardView = (() => {
     document.getElementById('quick-modal-proximo-fecha').value = '';
     document.getElementById('quick-modal-accion').value = 'registrar';
 
-    // Show/hide options depending on if it's a case or student or commitment
-    const isCaso = casoId && !casoId.startsWith('est_');
+    // Contexto: si viene de Compromiso Incumplido, diferenciar UI para evitar vínculo mal
+    const estTmp = (typeof Storage!=='undefined' && typeof Storage.getEstudianteById==='function' && estudianteId) ? Storage.getEstudianteById(estudianteId) : null;
+    const esCompromiso = (tituloCaso && String(tituloCaso).toLowerCase().includes('compromiso')) || !!(estTmp && estTmp.compromisoConductualActivo);
+    const tituloEl = document.getElementById('quick-modal-titulo');
     const select = document.getElementById('quick-modal-accion');
-    
-    // Reset options
-    Array.from(select.options).forEach(opt => opt.style.display = 'block');
-    
-    if (isCaso) {
-      // Hide close commitment option
-      const opt = select.querySelector('option[value="cerrar_compromiso"]');
-      if (opt) opt.style.display = 'none';
-    } else {
-      // Hide close case option
-      const opt = select.querySelector('option[value="cerrar_caso"]');
-      if (opt) opt.style.display = 'none';
+    const lblFecha = document.querySelector('label[for="quick-modal-proximo-fecha"]') || document.getElementById('quick-modal-proximo-fecha')?.previousElementSibling;
+    const helpEl = document.getElementById('quick-modal-proximo-fecha')?.nextElementSibling;
+    if (tituloEl) tituloEl.innerText = esCompromiso ? 'Modificar fecha de compromiso' : 'Registrar Seguimiento';
+    if (select) {
+      if (esCompromiso) {
+        // Para compromiso: separar acciones para no vincular mal seguimiento con vigencia
+        select.innerHTML = '<option value="ampliar_compromiso">Modificar fecha de compromiso (Ampliar vigencia)</option><option value="registrar">Registrar Seguimiento en Bitácora (solo observación)</option><option value="cerrar_compromiso">Finalizar Compromiso Conductual (Dar de alta)</option>';
+      } else {
+        select.innerHTML = '<option value="registrar">Registrar Seguimiento en Bitácora (Seguir activo)</option><option value="cerrar_caso">Cerrar Caso Permanentemente</option><option value="cerrar_compromiso">Finalizar Compromiso Conductual (Dar de alta)</option>';
+        // ocultar según isCaso para no romper flujo caso
+        const isCaso = casoId && !casoId.startsWith('est_');
+        if (isCaso) {
+          const opt = select.querySelector('option[value="cerrar_compromiso"]');
+          if (opt) opt.style.display = 'none';
+        } else {
+          const opt = select.querySelector('option[value="cerrar_caso"]');
+          if (opt) opt.style.display = 'none';
+        }
+      }
     }
+    // Etiquetas contextuales
+    try {
+      const lblTexto = document.querySelector('label[for="quick-modal-texto"]');
+      if (lblTexto) lblTexto.innerText = esCompromiso && select.value==='ampliar_compromiso' ? 'Motivo de ampliación (opcional):' : 'Observación / Comentario:';
+      if (helpEl && helpEl.tagName==='P') helpEl.innerText = esCompromiso ? 'Se actualizará la Vigencia del compromiso en la ficha. No crea seguimiento salvo que elija la 2ª opción.' : 'Agenda una nueva fecha de alerta en el Dashboard.';
+      const inpFecha = document.getElementById('quick-modal-proximo-fecha');
+      if (inpFecha) {
+        inpFecha.required = esCompromiso && select.value==='ampliar_compromiso';
+        // prellenar con vigencia actual si es compromiso
+        if (esCompromiso && estTmp && estTmp.compromisoFechaTermino && !inpFecha.value) inpFecha.value = estTmp.compromisoFechaTermino;
+      }
+    } catch(_e) {}
+    // Actualizar label dinámico al cambiar select
+    select.onchange = function(){ 
+      window.DashboardView.onQuickAccionChange(); 
+      try{
+        const lblT = document.querySelector('label[for="quick-modal-texto"]');
+        const h = document.getElementById('quick-modal-proximo-fecha')?.nextElementSibling;
+        const inpF = document.getElementById('quick-modal-proximo-fecha');
+        const esAmp = select.value==='ampliar_compromiso';
+        if(lblT) lblT.innerText = esAmp ? 'Motivo de ampliación (opcional):' : 'Observación / Comentario:';
+        if(h && h.tagName==='P') h.innerText = esAmp ? 'Se actualizará la Vigencia del compromiso en la ficha. No crea seguimiento salvo que elija la 2ª opción.' : (esCompromiso ? 'Solo bitácora, no mueve vigencia.' : 'Agenda una nueva fecha de alerta en el Dashboard.');
+        if(inpF) inpF.required = esAmp;
+      }catch(_e){}
+    };
 
     onQuickAccionChange();
     modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+    // Restaurar borrador si existe para mismo caso/est (persistencia al navegar)
+    try {
+      const draft = loadQuickDraft(casoId, estudianteId);
+      if (draft) {
+        if (draft.texto) document.getElementById('quick-modal-texto').value = draft.texto;
+        if (draft.fecha) document.getElementById('quick-modal-proximo-fecha').value = draft.fecha;
+        if (draft.accion) document.getElementById('quick-modal-accion').value = draft.accion;
+        if (draft.texto || draft.fecha) { try{ App.showToast('Borrador restaurado', 'info'); }catch(_e){} onQuickAccionChange(); }
+      }
+    } catch(_e) {}
+    try { setTimeout(()=> document.getElementById('quick-modal-texto')?.focus(), 50); } catch(_e) {}
   }
 
   function abrirModalAlta(estId, estNombre) {
@@ -1179,9 +1353,20 @@ const DashboardView = (() => {
     }
   }
 
-  function cerrarQuickSeguimiento() {
+  function cerrarQuickSeguimiento(forceDiscard) {
     const modal = document.getElementById('quick-seguimiento-modal');
-    if (modal) modal.style.display = 'none';
+    if (!modal) return;
+    if (!forceDiscard && isQuickModalDirty()) {
+      const ok = confirm('Tienes un seguimiento sin guardar. ¿Descartar y cerrar? El borrador quedará guardado 24h y se restaurará al reabrir.');
+      if (!ok) return;
+      // usuario confirmó descartar vista, pero mantenemos borrador por si se arrepiente; solo ocultamos
+    }
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+  }
+  function cerrarQuickSeguimientoForzado() {
+    const modal = document.getElementById('quick-seguimiento-modal');
+    if (modal) { modal.style.display='none'; modal.classList.add('hidden'); }
   }
 
   function onQuickAccionChange() {
@@ -1193,6 +1378,10 @@ const DashboardView = (() => {
       campos.style.display = 'block';
       btn.innerHTML = `${Icons.get('check', 16)} Guardar`;
       btn.style.background = '#10b981';
+    } else if (val === 'ampliar_compromiso') {
+      campos.style.display = 'block';
+      btn.innerHTML = `${Icons.get('calendar', 16)} Ampliar vigencia`;
+      btn.style.background = '#f59e0b';
     } else if (val === 'cerrar_caso') {
       campos.style.display = 'none';
       btn.innerHTML = `${Icons.get('trash-2', 16)} Confirmar y Cerrar Caso`;
@@ -1223,7 +1412,7 @@ const DashboardView = (() => {
       if (accion === 'registrar') {
         const entry = {
           id: Date.now().toString(),
-          fecha: BARITA_hoyChileISO(),
+          fecha: new Date().toISOString(),
           texto: comentario || 'Seguimiento registrado desde Dashboard',
           fechaProximoSeguimiento: proximaFecha,
           fechaProximo: proximaFecha,
@@ -1231,7 +1420,7 @@ const DashboardView = (() => {
         };
 
         if (casoId && !casoId.startsWith('est_')) {
-          // 1. Guardar en Bitácora del Caso
+          // 1. Guardar en Bitácora del Caso — SOLO seguimiento, no toca compromiso para evitar vínculo mal
           const caso = (Storage.getCasos ? Storage.getCasos() : []).find(c => c.id === casoId);
           if (caso) {
             if (!Array.isArray(caso.seguimiento)) caso.seguimiento = [];
@@ -1239,24 +1428,26 @@ const DashboardView = (() => {
             caso.proximoSeguimiento = proximaFecha;
             caso.fechaProximoSeguimiento = proximaFecha;
 
-            // FIX: payload limpio solo columnas reales
-            const cleanPayload = {
-              id: caso.id,
-              colegio_id: caso.colegio_id || caso.colegioId || (typeof Storage!=='undefined'?Storage.activeSchool:'demo'),
-              estudiante_id: caso.estudiante_id || caso.estudianteId || caso.estudiante_id_ref || null,
-              titulo: caso.titulo || '',
-              descripcion: caso.descripcion || '',
-              estado: caso.estado || 'en_proceso',
-              tipo: caso.tipo || 'seguimiento',
-              fecha: caso.fecha || new Date().toISOString(),
-              creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
-              seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : [],
-              estudiantesInvolucrados: Array.isArray(caso.estudiantesInvolucrados) ? caso.estudiantesInvolucrados : (Array.isArray(caso.estudiantes_involucrados) ? caso.estudiantes_involucrados : [])
-            };
-            const { error } = await client.from('casos').upsert(cleanPayload);
-            if (error) throw error;
+            // Persistir via Storage.saveCaso para usar localMutations y evitar borrado solo (offline/RLS)
+            try { await Storage.saveCaso(caso); } catch(_e) {
+              const cleanPayload = {
+                id: caso.id,
+                colegio_id: caso.colegio_id || caso.colegioId || (typeof Storage!=='undefined'?Storage.activeSchool:'demo'),
+                estudiante_id: caso.estudiante_id || caso.estudianteId || caso.estudiante_id_ref || null,
+                titulo: caso.titulo || '',
+                descripcion: caso.descripcion || '',
+                estado: caso.estado || 'en_proceso',
+                tipo: caso.tipo || 'seguimiento',
+                fecha: caso.fecha || new Date().toISOString(),
+                creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
+                seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : [],
+                estudiantesInvolucrados: Array.isArray(caso.estudiantesInvolucrados) ? caso.estudiantesInvolucrados : (Array.isArray(caso.estudiantes_involucrados) ? caso.estudiantes_involucrados : [])
+              };
+              const { error } = await client.from('casos').upsert(cleanPayload);
+              if (error) throw error;
+            }
 
-            // Sincronizar fecha y bandera de seguimiento en el estudiante asociado
+            // Sincronizar fecha y bandera de seguimiento en el estudiante asociado — SIN tocar compromiso
             const assocEstId = caso.estudianteId || caso.estudiante_id || caso.estudiante_id_ref;
             if (assocEstId) {
               const est = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => e.id === assocEstId);
@@ -1277,9 +1468,10 @@ const DashboardView = (() => {
             }
           }
         } else if (estId) {
-          // 2. Guardar en Bitácora del Estudiante
+          // 2. Guardar en Bitácora del Estudiante — SOLO seguimiento (no toca compromiso para evitar vínculo mal)
           const est = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => e.id === estId);
           if (est) {
+            // Registrar como seguimiento independiente, sin extender compromiso
             if (!Array.isArray(est.bitacoraSeguimiento)) est.bitacoraSeguimiento = [];
             est.bitacoraSeguimiento.push(entry);
             est.fechaProximoSeguimiento = proximaFecha;
@@ -1293,6 +1485,32 @@ const DashboardView = (() => {
           try{ DashboardView.limpiarVistoParaNuevoSeguimiento(casoId, estId); }catch(_e){}
         }
         try{ DashboardView.limpiarVistoParaNuevoSeguimiento(casoId, null); if(estId) DashboardView.limpiarVistoParaNuevoSeguimiento(null, estId); }catch(_e){}
+      } else if (accion === 'ampliar_compromiso') {
+        // Modificar fecha de compromiso — explícito, no crea seguimiento
+        if (!estId) { App.showToast('No se encontró el estudiante para ampliar vigencia.', 'danger'); return; }
+        if (!proximaFecha) { App.showToast('Debe indicar la nueva fecha de término del compromiso.', 'warning'); return; }
+        const est = (Storage.getEstudiantes ? Storage.getEstudiantes() : []).find(e => e.id === estId);
+        if (!est || !est.compromisoConductualActivo) { App.showToast('El compromiso no está activo.', 'warning'); return; }
+        const prevTermino = est.compromisoFechaTermino;
+        est.compromisoFechaTermino = proximaFecha;
+        est.compromisoFechaInicio = est.compromisoFechaInicio || BARITA_hoyChileISO();
+        if (est.compromisoEstado === 'incumplido') est.compromisoEstado = 'vigente';
+        est.compromisoDescartado = false;
+        if (!Array.isArray(est.bitacoraSeguimiento)) est.bitacoraSeguimiento = [];
+        const textoAmp = `⏳ [Compromiso Conductual] Ampliación de vigencia: ${prevTermino || ''} → ${proximaFecha}${comentario ? ' | Motivo: '+comentario : ''}`;
+        est.bitacoraSeguimiento.unshift({
+          id: 'amp_'+Date.now(),
+          fecha: new Date().toISOString(),
+          fechaProximoSeguimiento: proximaFecha,
+          fechaProximo: proximaFecha,
+          texto: textoAmp,
+          registradoPor: (Auth.currentUser ? (Auth.currentUser.nombres || Auth.currentUser.email) : 'Funcionario')
+        });
+        // También actualizar fechaProximoSeguimiento para que RICE snoozee alerta hasta nueva fecha
+        est.fechaProximoSeguimiento = proximaFecha;
+        est.fechaProximo = proximaFecha;
+        await Storage.saveEstudiante(est, true);
+        try{ DashboardView.limpiarVistoParaNuevoSeguimiento(null, estId); }catch(_e){}
       } else if (accion === 'cerrar_caso') {
         // Cerrar Caso - si viene de alerta directa de estudiante (est_...), cerrar bandera del estudiante y sus casos
         if (casoId && String(casoId).startsWith('est_')) {
@@ -1424,10 +1642,11 @@ const DashboardView = (() => {
         }
       }
 
+      try { clearQuickDraft(casoId, estId); } catch(_e) {}
       App.showToast('Acción realizada exitosamente.', 'success');
-      cerrarQuickSeguimiento();
+      cerrarQuickSeguimientoForzado();
       
-      // Recargar la vista
+      // Recargar la vista sin destruir el draft ya limpiado
       if (typeof App.handleRoute === 'function') {
         App.handleRoute(true);
       } else {
@@ -1438,7 +1657,8 @@ const DashboardView = (() => {
       const msg = (e && e.message) ? e.message : (e && e.error_description) ? e.error_description : String(e);
       App.showToast('No se pudo guardar la acción: ' + msg.substring(0,120), 'danger');
     } finally {
-      cerrarQuickSeguimiento();
+      // no auto-cerrar si hubo error y hay borrador — mantener abierto para corregir
+      if (!isQuickModalDirty()) cerrarQuickSeguimientoForzado();
     }
   }
 
@@ -1550,7 +1770,7 @@ const DashboardView = (() => {
     }catch(_e){}
   }
 
-  return { render, switchTab, descartarAlertaCompromiso, abrirQuickSeguimiento, cerrarQuickSeguimiento, onQuickAccionChange, guardarQuickSeguimiento, canExecuteAlta, marcarAlertaComoLeida, limpiarVistoParaNuevoSeguimiento, abrirModalAlta, cerrarModalAlta, onAltaResolucionChange, guardarAltaCompromiso };
+  return { render, switchTab, descartarAlertaCompromiso, abrirQuickSeguimiento, cerrarQuickSeguimiento, cerrarQuickSeguimientoForzado, ensureQuickModalPortal, onQuickAccionChange, guardarQuickSeguimiento, canExecuteAlta, marcarAlertaComoLeida, limpiarVistoParaNuevoSeguimiento, abrirModalAlta, cerrarModalAlta, onAltaResolucionChange, guardarAltaCompromiso, getQuickDraftKey, saveQuickDraft, loadQuickDraft, clearQuickDraft, isQuickModalDirty };
 })();
 
 window.DashboardView = DashboardView;

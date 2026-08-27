@@ -360,6 +360,30 @@ const App = {
     this._lastRouteTime = ahora;
     this._lastRouteReady = isReady;
 
+    // FIX: modal quick-seguimiento es portal en body — no destruir al navegar, guardar borrador y avisar
+    try {
+      const qm = document.getElementById('quick-seguimiento-modal');
+      const isQmVisible = qm && qm.style.display !== 'none' && !qm.classList.contains('hidden');
+      if (isQmVisible && !isSilentSync) {
+        const hasDraft = (document.getElementById('quick-modal-texto')?.value?.trim() || document.getElementById('quick-modal-proximo-fecha')?.value?.trim() || (document.getElementById('quick-modal-accion')?.value && document.getElementById('quick-modal-accion').value !== 'registrar'));
+        if (hasDraft) {
+          try {
+            const school = (typeof Storage!=='undefined' && Storage.activeSchool) ? Storage.activeSchool : 'demo';
+            const uid = (typeof Auth!=='undefined' && Auth.currentUser && (Auth.currentUser.id||Auth.currentUser.uid)) ? (Auth.currentUser.id||Auth.currentUser.uid) : 'anon';
+            const casoId = document.getElementById('quick-modal-caso-id')?.value || '';
+            const estId = document.getElementById('quick-modal-est-id')?.value || '';
+            const key = `barita_quick_draft_${school}_${uid}_${(casoId||'noCaso')}_${(estId||'noEst')}`;
+            const texto = document.getElementById('quick-modal-texto')?.value || '';
+            const fecha = document.getElementById('quick-modal-proximo-fecha')?.value || '';
+            const accion = document.getElementById('quick-modal-accion')?.value || '';
+            localStorage.setItem(key, JSON.stringify({casoId, estId, texto, fecha, accion, ts: Date.now()}));
+          } catch(_e) {}
+        }
+        // No bloquear navegación: el modal es portal y sobrevivirá, solo avisar
+        try { if (typeof App.showToast === 'function') App.showToast('Modal seguirá abierto — borrador guardado', 'info'); } catch(_e) {}
+      }
+    } catch(_e) {}
+
     const rawSearch = window.location.search || '';
     if (rawHash.includes('access_token') || rawHash.includes('provider_token') || rawSearch.includes('code=')) {
       const intercepted = await this.handleAuthHashCallback();
@@ -536,6 +560,17 @@ const App = {
     } catch (e) {
       contentBody.innerHTML = `<div class="card text-danger"><h2>Error del sistema</h2><p>${e.message}</p></div>`;
     }
+    // Re-afirmar modal persistente tras navegación (debe quedar visible sobre cualquier vista)
+    try {
+      const qm = document.getElementById('quick-seguimiento-modal');
+      if (qm && qm.style.display !== 'none' && !qm.classList.contains('hidden')) {
+        document.body.appendChild(qm);
+        qm.style.display = 'flex';
+        qm.classList.remove('hidden');
+        qm.style.zIndex = '1050';
+        document.body.classList.add('has-persistent-modal');
+      }
+    } catch(_e) {}
     
     if (isSilentSync && scrollContainer && savedScroll > 0) {
       // Use setTimeout to ensure DOM has updated before scrolling

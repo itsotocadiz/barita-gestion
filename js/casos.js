@@ -722,7 +722,11 @@ const CasosView = {
               trackingId: est.currentTrackingId,
               registradoPor: loggedUser
             });
-            if (proximoVal) est.fechaProximoSeguimiento = proximoVal;
+            if (proximoVal) {
+              est.fechaProximoSeguimiento = proximaVal;
+              est.fechaProximo = proximaVal;
+              est.proximoSeguimiento = proximaVal;
+            }
             // activa flag según tipo de caso
             const tipoCaso = c.tipo || 'seguimiento';
             if (tipoCaso==='seguimiento') est.enSeguimiento=true;

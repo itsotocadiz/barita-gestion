@@ -1449,6 +1449,9 @@ const EstudiantesView = {
       const est = Storage.getEstudianteById(estId);
       if (est && fechaProximoVal) {
         est.fechaProximoSeguimiento = fechaProximoVal;
+        est.fechaProximo = fechaProximoVal;
+        // No extender compromiso automáticamente — seguimiento es independiente (evita vínculo mal).
+        // Para modificar vigencia usar 'Modificar fecha de compromiso' desde Dashboard o toggleCompromiso en ficha.
       }
       if (est && casoId) {
         if (casoId === 'general_seguimiento' || casoId === 'general') {
@@ -1764,7 +1767,7 @@ const EstudiantesView = {
           }
         }
         
-        await Storage.saveEstudiante(est);
+        await Storage.saveEstudiante(est, true);
         await Storage.saveCaso(caso);
         
         App.closeModal();
@@ -1804,7 +1807,8 @@ const EstudiantesView = {
         
         est.bitacoraSeguimiento.sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
         
-        await Storage.saveEstudiante(est);
+        await Storage.saveEstudiante(est, true);
+        try{ if(typeof DashboardView!=='undefined' && DashboardView.limpiarVistoParaNuevoSeguimiento) DashboardView.limpiarVistoParaNuevoSeguimiento(null, estId); }catch(_e){}
         App.closeModal();
         App.showToast('Registro de Bitácora y próximo seguimiento actualizados', 'success');
         this.renderDetalle(document.getElementById('app-content'), estId, true);
@@ -1980,6 +1984,8 @@ const EstudiantesView = {
     if (est) {
       if (fechaProximo) {
         est.fechaProximoSeguimiento = fechaProximo;
+        est.fechaProximo = fechaProximo;
+        est.proximoSeguimiento = fechaProximo;
       }
       if (Array.isArray(est.bitacoraSeguimiento)) {
         const item = est.bitacoraSeguimiento.find(b => b && (String(b.id) === String(bitacoraId) || String(b.fecha) === String(bitacoraId)));
@@ -1990,7 +1996,8 @@ const EstudiantesView = {
           item.fechaProximo = fechaProximo;
         }
       }
-      await Storage.saveEstudiante(est);
+      await Storage.saveEstudiante(est, true);
+      try{ if(typeof DashboardView!=='undefined' && DashboardView.limpiarVistoParaNuevoSeguimiento) DashboardView.limpiarVistoParaNuevoSeguimiento(null, estudianteId); }catch(_e){}
     }
 
     if (Storage.cache.anotaciones) {

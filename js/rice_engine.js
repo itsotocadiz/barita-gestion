@@ -446,6 +446,28 @@ const RICEEngine = {
     if (!Array.isArray(est.bitacoraSeguimiento)) est.bitacoraSeguimiento = [];
 
     if (infraccion) {
+      // FIX vinculado: si el seguimiento fue reprogramado a futuro (ampliación), no marcar como incumplido hoy — esperar a nueva fecha
+      // Check 1: fechaProximoSeguimiento futuro => vigencia extendida, la infra anterior se considera atendida/reprogramada
+      const proximaYMD = toYMD(est.fechaProximoSeguimiento || est.fechaProximo || est.proximoSeguimiento || '');
+      if (proximaYMD && proximaYMD > nowIso) {
+        // si el próximo seguimiento es futuro y existe bitácora de ampliación/seg. posterior a la infra, considerar vigente
+        const infraTime = new Date(infraccion.fecha).getTime();
+        const tieneAmpliacionFutura = Array.isArray(est.bitacoraSeguimiento) && est.bitacoraSeguimiento.some(b=>{
+          if (!b || !b.texto || !b.fecha) return false;
+          const txt = String(b.texto).toLowerCase();
+          const esAmpli = txt.includes('ampliac') || txt.includes('compromiso') || (b.fechaProximoSeguimiento && toYMD(b.fechaProximoSeguimiento)===proximaYMD);
+          if (!esAmpli) return false;
+          const bTime = new Date(b.fecha).getTime();
+          return !isNaN(bTime) && bTime > infraTime;
+        });
+        if (tieneAmpliacionFutura) {
+          if (est.compromisoEstado !== 'vigente') {
+            est.compromisoEstado = 'vigente';
+            if (Storage.saveEstudiante) Storage.saveEstudiante(est);
+          }
+          return { estado: 'vigente' };
+        }
+      }
       // Formatear estrictamente la fecha real del evento
       const ymdInf = toYMD(infraccion.fecha);
       const partsInf = ymdInf.split('-');
