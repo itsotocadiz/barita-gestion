@@ -1094,10 +1094,19 @@ const DashboardView = (() => {
       if (document.visibilityState === 'hidden' && isQuickModalDirty()) saveQuickDraft();
       if (document.visibilityState === 'visible') {
         const m = document.getElementById('quick-seguimiento-modal');
-        if (m && !m.classList.contains('hidden') && m.style.display !== 'none') {
-          document.body.appendChild(m);
-          m.style.display = 'flex';
-          m.style.zIndex = '9998';
+        if (m) {
+          const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; return !!loadQuickDraft(c,e); }catch(_e){ return false; }})();
+          const wasOpen = !m.classList.contains('hidden') && m.style.display !== 'none';
+          const shouldShow = wasOpen || hasDraft;
+          if (shouldShow) {
+            document.body.appendChild(m);
+            m.style.display = 'flex';
+            m.classList.remove('hidden');
+            m.style.opacity = '1';
+            m.style.visibility = 'visible';
+            m.style.pointerEvents = 'auto';
+            m.style.zIndex = '9999';
+          }
         }
       }
     });

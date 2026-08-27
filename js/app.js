@@ -347,6 +347,24 @@ const App = {
   },
 
   async handleRoute(isSilentSync = false) {
+    // FIX: re-afirmar portal SIEMPRE antes de early-return — si no, vuelve de pestaña con display:none (Alt+Tab)
+    try {
+      const qm = document.getElementById('quick-seguimiento-modal');
+      if (qm) {
+        const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; const school=(typeof Storage!=='undefined'&&Storage.activeSchool)?Storage.activeSchool:'demo'; const uid=(typeof Auth!=='undefined'&&Auth.currentUser&&(Auth.currentUser.id||Auth.currentUser.uid))?(Auth.currentUser.id||Auth.currentUser.uid):'anon'; const key=`barita_quick_draft_${school}_${uid}_${(c||'noCaso')}_${(e||'noEst')}`; const raw=localStorage.getItem(key); if(!raw) return false; const d=JSON.parse(raw); return d && d.ts && Date.now()-d.ts < 86400000 && (d.texto||d.fecha||d.accion!=='registrar'); }catch(_e){ return false; }})();
+        const isVisible = qm.style.display !== 'none' && !qm.classList.contains('hidden');
+        const shouldShow = isVisible || hasDraft;
+        if (shouldShow) {
+          document.body.appendChild(qm);
+          qm.style.display = 'flex';
+          qm.classList.remove('hidden');
+          qm.style.zIndex = '9999';
+          qm.style.opacity = '1';
+          qm.style.pointerEvents = 'auto';
+          qm.style.visibility = 'visible';
+        }
+      }
+    } catch(_e) {}
     const rawHash = window.location.hash || '';
     
     // Evitar llamadas duplicadas idénticas si ya se renderizó con datos listos
@@ -560,15 +578,22 @@ const App = {
     } catch (e) {
       contentBody.innerHTML = `<div class="card text-danger"><h2>Error del sistema</h2><p>${e.message}</p></div>`;
     }
-    // Re-afirmar modal persistente tras navegación (debe quedar visible sobre cualquier vista)
+    // Re-afirmar modal persistente tras navegación (debe quedar visible sobre cualquier vista, incluso tras Alt+Tab)
     try {
       const qm = document.getElementById('quick-seguimiento-modal');
-      if (qm && qm.style.display !== 'none' && !qm.classList.contains('hidden')) {
-        document.body.appendChild(qm);
-        qm.style.display = 'flex';
-        qm.classList.remove('hidden');
-        qm.style.zIndex = '1050';
-        document.body.classList.add('has-persistent-modal');
+      if (qm) {
+        const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; const school=(typeof Storage!=='undefined'&&Storage.activeSchool)?Storage.activeSchool:'demo'; const uid=(typeof Auth!=='undefined'&&Auth.currentUser&&(Auth.currentUser.id||Auth.currentUser.uid))?(Auth.currentUser.id||Auth.currentUser.uid):'anon'; const key=`barita_quick_draft_${school}_${uid}_${(c||'noCaso')}_${(e||'noEst')}`; const raw=localStorage.getItem(key); if(!raw) return false; const d=JSON.parse(raw); return d && d.ts && Date.now()-d.ts < 86400000 && (d.texto||d.fecha||d.accion!=='registrar'); }catch(_e){ return false; }})();
+        const shouldShow = (qm.style.display !== 'none' && !qm.classList.contains('hidden')) || hasDraft;
+        if (shouldShow) {
+          document.body.appendChild(qm);
+          qm.style.display = 'flex';
+          qm.classList.remove('hidden');
+          qm.style.opacity = '1';
+          qm.style.visibility = 'visible';
+          qm.style.pointerEvents = 'auto';
+          qm.style.zIndex = '9999';
+          document.body.classList.add('has-persistent-modal');
+        }
       }
     } catch(_e) {}
     
