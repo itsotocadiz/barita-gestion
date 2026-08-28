@@ -449,7 +449,26 @@ Object.assign(Storage, {
         }
         
         if (typeof App !== 'undefined' && App.initialized) {
-          App.handleRoute(true);
+          // No destruir modal si está abierto: silentSync preserva portal
+          let modalOpen = false;
+          try {
+            const qm = document.getElementById('quick-seguimiento-modal');
+            if (qm && (qm.style.display !== 'none' && !qm.classList.contains('hidden') || qm.classList.contains('is-open') || qm.dataset.wasOpen==='1')) modalOpen = true;
+            if (!modalOpen) {
+              const ctxRaw = sessionStorage.getItem('barita_quick_modal_ctx');
+              const ctx = ctxRaw ? JSON.parse(ctxRaw) : null;
+              if (ctx && ctx.isOpen && Date.now() - (ctx.ts||0) < 86400000) modalOpen = true;
+            }
+            if (!modalOpen) {
+              for(let i=0;i<sessionStorage.length;i++){ const k=sessionStorage.key(i); if(k&&k.startsWith('barita_quick_draft_')){ try{ const d=JSON.parse(sessionStorage.getItem(k)||'{}'); if(d&&d.isOpen&&Date.now()-d.ts<86400000){ modalOpen=true; break; } }catch(_e){} } }
+            }
+          } catch(_e) {}
+          if (!modalOpen) App.handleRoute(true);
+          else {
+            // solo refrescar sidebar, no vista
+            try{ App.renderSidebar(); }catch(_e){}
+            try{ App.renderHeaderActions(); }catch(_e){}
+          }
         }
         this.syncLocalMutationsToServer();
         resolve();

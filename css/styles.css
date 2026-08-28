@@ -4,6 +4,12 @@
    ================================================================ */
 
 :root {
+  /* ── BARITA Modal Tokens ── */
+  --z-modal: 1060;
+  --z-modal-backdrop: 1059;
+  --backdrop-blur: 4px;
+  --transition-modal: 0.25s cubic-bezier(0.4,0,0.2,1);
+  --modal-max-w: 520px;
   /* ── Paleta Base (Minimal Carbon & Royal Sapphire) ── */
 
   /* Sidebar */
@@ -635,19 +641,30 @@ textarea.form-control {
   right: 0;
   bottom: 0;
   background-color: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   opacity: 1;
-  transition: opacity 0.3s ease;
+  visibility: visible;
+  transition: opacity var(--transition-modal), visibility var(--transition-modal);
+  isolation: isolate;
 }
 
 .modal-overlay.hidden {
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
+.modal-overlay.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+.modal-overlay.is-open .modal-container { transform: translateY(0); }
+body.has-persistent-modal { overflow: hidden !important; }
+body.has-persistent-modal .main-content { padding-right: var(--scrollbar-comp, 0px); }
+@media (prefers-reduced-motion: reduce) { .modal-overlay, .modal-container { transition: none !important; } }
+#quick-seguimiento-modal { z-index: var(--z-modal); }
+#quick-seguimiento-modal .modal-container { width: 100%; max-width: var(--modal-max-w); max-height: 90dvh; }
 
 .modal-container, .modal {
   background-color: var(--bg-card);

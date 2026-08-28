@@ -378,14 +378,55 @@ const App = {
     this._lastRouteTime = ahora;
     this._lastRouteReady = isReady;
 
-    // FIX: modal quick-seguimiento es portal en body — no destruir al navegar, guardar borrador y avisar
+    // FIX post-visibilidad (delay ~500ms): si es silentSync y modal abierto, NO destruir vista (preserva is-open/wasOpen)
+    if (isSilentSync) {
+      try {
+        const qmSilent = document.getElementById('quick-seguimiento-modal');
+        let hasDraftSilent = false;
+        try {
+          const ctxRaw = sessionStorage.getItem('barita_quick_modal_ctx');
+          const ctx = ctxRaw ? JSON.parse(ctxRaw) : null;
+          if (ctx && ctx.isOpen && Date.now() - (ctx.ts||0) < 86400000) hasDraftSilent = true;
+          if (!hasDraftSilent && typeof DashboardView !== 'undefined' && DashboardView.loadQuickDraft) {
+            const c = document.getElementById('quick-modal-caso-id')?.value || ctx?.casoId || '';
+            const e = document.getElementById('quick-modal-est-id')?.value || ctx?.estId || '';
+            const d = DashboardView.loadQuickDraft(c,e);
+            if (d && d.isOpen && Date.now() - d.ts < 86400000) hasDraftSilent = true;
+          }
+          if (!hasDraftSilent) {
+            for(let i=0;i<sessionStorage.length;i++){ const k=sessionStorage.key(i); if(k&&k.startsWith('barita_quick_draft_')){ try{ const dd=JSON.parse(sessionStorage.getItem(k)||'{}'); if(dd&&dd.isOpen&&Date.now()-dd.ts<86400000){ hasDraftSilent=true; break; } }catch(_e){} } }
+            if(!hasDraftSilent){ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('barita_quick_draft_')){ try{ const dd=JSON.parse(localStorage.getItem(k)||'{}'); if(dd&&dd.isOpen&&Date.now()-dd.ts<86400000){ hasDraftSilent=true; break; } }catch(_e){} } } }
+          }
+        } catch(_e2) {}
+        const isOpenSilent = qmSilent && (qmSilent.style.display !== 'none' && !qmSilent.classList.contains('hidden') || qmSilent.classList.contains('is-open') || qmSilent.dataset.wasOpen==='1');
+        if (isOpenSilent || hasDraftSilent) {
+          if (qmSilent) {
+            document.body.appendChild(qmSilent);
+            qmSilent.style.display='flex';
+            qmSilent.classList.remove('hidden');
+            qmSilent.classList.add('is-open');
+            qmSilent.style.opacity='1';
+            qmSilent.style.visibility='visible';
+            qmSilent.style.pointerEvents='auto';
+            qmSilent.style.zIndex='9999';
+            document.body.classList.add('has-persistent-modal');
+          }
+          // actualizar sidebar sin destruir contenido
+          try{ this.renderSidebar(); }catch(_e){}
+          return;
+        }
+      } catch(_e) {}
+    }
+
+    // FIX: modal portal — guardar borrador SIEMPRE aunque vacío al navegar (no solo si dirty)
     try {
       const qm = document.getElementById('quick-seguimiento-modal');
-      const isQmVisible = qm && qm.style.display !== 'none' && !qm.classList.contains('hidden');
+      const isQmVisible = qm && (qm.style.display !== 'none' && !qm.classList.contains('hidden') || qm.classList.contains('is-open') || qm.dataset.wasOpen==='1');
       if (isQmVisible && !isSilentSync) {
-        const hasDraft = (document.getElementById('quick-modal-texto')?.value?.trim() || document.getElementById('quick-modal-proximo-fecha')?.value?.trim() || (document.getElementById('quick-modal-accion')?.value && document.getElementById('quick-modal-accion').value !== 'registrar'));
-        if (hasDraft) {
-          try {
+        try {
+          if (typeof window._baritaFlushQuickDraft === 'function') window._baritaFlushQuickDraft();
+          else if (typeof DashboardView !== 'undefined' && DashboardView.saveQuickDraft) DashboardView.saveQuickDraft();
+          else {
             const school = (typeof Storage!=='undefined' && Storage.activeSchool) ? Storage.activeSchool : 'demo';
             const uid = (typeof Auth!=='undefined' && Auth.currentUser && (Auth.currentUser.id||Auth.currentUser.uid)) ? (Auth.currentUser.id||Auth.currentUser.uid) : 'anon';
             const casoId = document.getElementById('quick-modal-caso-id')?.value || '';
@@ -394,10 +435,11 @@ const App = {
             const texto = document.getElementById('quick-modal-texto')?.value || '';
             const fecha = document.getElementById('quick-modal-proximo-fecha')?.value || '';
             const accion = document.getElementById('quick-modal-accion')?.value || '';
-            localStorage.setItem(key, JSON.stringify({casoId, estId, texto, fecha, accion, ts: Date.now()}));
-          } catch(_e) {}
-        }
-        // No bloquear navegación: el modal es portal y sobrevivirá, solo avisar
+            const payload = JSON.stringify({casoId, estId, texto, fecha, accion, ts: Date.now(), isOpen:true});
+            localStorage.setItem(key, payload);
+            try{ sessionStorage.setItem(key, payload); }catch(_e){}
+          }
+        } catch(_e) {}
         try { if (typeof App.showToast === 'function') App.showToast('Modal seguirá abierto — borrador guardado', 'info'); } catch(_e) {}
       }
     } catch(_e) {}

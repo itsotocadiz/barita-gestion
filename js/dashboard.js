@@ -961,15 +961,35 @@ const DashboardView = (() => {
     `;
 
     if (!container) return;
-    // FIX: si modal está abierto, no destruir dashboard (paridad con NotasView:88)
+    // FIX: si modal está abierto, no destruir dashboard (paridad con NotasView:88) - incluye draft persistido
     const qmGuard = document.getElementById('quick-seguimiento-modal');
-    const isQuickOpen = qmGuard && (
+    let isQuickOpen = qmGuard && (
       (qmGuard.style.display !== 'none' && !qmGuard.classList.contains('hidden'))
       || qmGuard.classList.contains('is-open')
       || qmGuard.dataset.wasOpen === '1'
     );
+    // fallback: draft isOpen en storage (cubre BFCache/delay sync)
+    if (!isQuickOpen) {
+      try {
+        const ctxRaw = sessionStorage.getItem('barita_quick_modal_ctx');
+        const ctx = ctxRaw ? JSON.parse(ctxRaw) : null;
+        if (ctx && ctx.isOpen && Date.now() - (ctx.ts||0) < 86400000) isQuickOpen = true;
+        if (!isQuickOpen) {
+          for(let i=0;i<sessionStorage.length;i++){ const k=sessionStorage.key(i); if(k&&k.startsWith('barita_quick_draft_')){ try{ const d=JSON.parse(sessionStorage.getItem(k)||'{}'); if(d&&d.isOpen&&Date.now()-d.ts<86400000){ isQuickOpen=true; break; } }catch(_e){} } }
+        }
+      } catch(_e) {}
+    }
     if (isQuickOpen) {
-      try { document.body.appendChild(qmGuard); qmGuard.style.display='flex'; qmGuard.classList.remove('hidden'); qmGuard.style.zIndex='9999'; } catch(_e){}
+      try {
+        document.body.appendChild(qmGuard);
+        qmGuard.style.display='flex';
+        qmGuard.classList.remove('hidden');
+        qmGuard.classList.add('is-open');
+        qmGuard.style.opacity='1';
+        qmGuard.style.visibility='visible';
+        qmGuard.dataset.wasOpen='1';
+        document.body.classList.add('has-persistent-modal');
+      } catch(_e){}
       return;
     }
     container.innerHTML = html;
