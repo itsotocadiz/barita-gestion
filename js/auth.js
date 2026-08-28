@@ -56,7 +56,14 @@ const Auth = (() => {
         return;
       }
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        if (session?.user) await _handleUserLoggedIn(session.user, window.supabaseGestion);
+        if (session?.user) {
+          const isSameUser = state.currentUser && state.currentUser.id === session.user.id;
+          if (isSameUser && typeof App !== 'undefined' && App.initialized) {
+            if (window.BARITA_DEBUG) console.debug("Ignorando INITIAL_SESSION/SIGNED_IN para el usuario ya logueado");
+            return;
+          }
+          await _handleUserLoggedIn(session.user, window.supabaseGestion);
+        }
       } else if (event === 'SIGNED_OUT') {
         if (!state.currentUser || state._activeClient === window.supabaseGestion) _handleUserLoggedOut();
       }
@@ -67,6 +74,14 @@ const Auth = (() => {
   async function _handleUserLoggedIn(user, client) {
     if (state.isLoggingOut) return;
     if (user && user.id && !user.uid) user.uid = user.id;
+    
+    // Evitar re-inicialización destructiva si ya es el mismo usuario y la App está lista
+    const isSameUser = state.currentUser && state.currentUser.id === user.id;
+    if (isSameUser && typeof App !== 'undefined' && App.initialized) {
+      if (window.BARITA_DEBUG) console.debug("DEBUG _handleUserLoggedIn - Usuario ya inicializado. Ignorando re-inicialización.");
+      return;
+    }
+
     state.currentUser = user;
     state._activeClient = client;
 

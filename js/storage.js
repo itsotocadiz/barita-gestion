@@ -475,7 +475,7 @@ Object.assign(Storage, {
             try{ App.renderHeaderActions(); }catch(_e){}
           }
         }
-        this.syncLocalMutationsToServer();
+        await this.syncLocalMutationsToServer();
         this._syncInProgress = false;
         resolve();
       } catch (err) {
