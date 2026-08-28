@@ -627,11 +627,19 @@ const App = {
     
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        this.closeModal();
-        const aiDrawer = document.getElementById('ai-drawer-overlay');
-        if (aiDrawer) aiDrawer.classList.add('hidden');
-        const funcDrawer = document.getElementById('funcionario-informe-drawer');
-        if (funcDrawer) funcDrawer.remove();
+        // FIX C-1: no interferir con #quick-seguimiento-modal — su ESC lo maneja ensureQuickModalPortal
+        const qm = document.getElementById('quick-seguimiento-modal');
+        const qmOpen = qm && (
+          (qm.style.display !== 'none' && !qm.classList.contains('hidden'))
+          || qm.classList.contains('is-open')
+        );
+        if (!qmOpen) {
+          this.closeModal();
+          const aiDrawer = document.getElementById('ai-drawer-overlay');
+          if (aiDrawer) aiDrawer.classList.add('hidden');
+          const funcDrawer = document.getElementById('funcionario-informe-drawer');
+          if (funcDrawer) funcDrawer.remove();
+        }
       }
     });
   },

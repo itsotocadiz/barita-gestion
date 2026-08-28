@@ -963,7 +963,11 @@ const DashboardView = (() => {
     if (!container) return;
     // FIX: si modal está abierto, no destruir dashboard (paridad con NotasView:88)
     const qmGuard = document.getElementById('quick-seguimiento-modal');
-    const isQuickOpen = qmGuard && qmGuard.style.display !== 'none' && !qmGuard.classList.contains('hidden');
+    const isQuickOpen = qmGuard && (
+      (qmGuard.style.display !== 'none' && !qmGuard.classList.contains('hidden'))
+      || qmGuard.classList.contains('is-open')
+      || qmGuard.dataset.wasOpen === '1'
+    );
     if (isQuickOpen) {
       try { document.body.appendChild(qmGuard); qmGuard.style.display='flex'; qmGuard.classList.remove('hidden'); qmGuard.style.zIndex='9999'; } catch(_e){}
       return;
@@ -1002,29 +1006,53 @@ const DashboardView = (() => {
       const estNombre = document.getElementById('quick-modal-est-nombre')?.innerText || '';
       const casoTitulo = document.getElementById('quick-modal-caso-titulo')?.innerText || '';
       const key = getQuickDraftKey(casoId, estId);
-      const isOpen = (()=>{ const m=document.getElementById('quick-seguimiento-modal'); return !!(m && m.style.display!=='none' && !m.classList.contains('hidden')); })();
-      localStorage.setItem(key, JSON.stringify({casoId, estId, texto, fecha, accion, estNombre, casoTitulo, ts: Date.now(), isOpen: !!isOpen}));
+      const m = document.getElementById('quick-seguimiento-modal');
+      const isOpen = !!(m && (m.style.display!=='none' && !m.classList.contains('hidden') || m.classList.contains('is-open') || m.dataset.wasOpen==='1'));
+      // Guardar en localStorage y sessionStorage (session para pestaña, local como fallback)
+      const payload = JSON.stringify({casoId, estId, texto, fecha, accion, estNombre, casoTitulo, ts: Date.now(), isOpen: !!isOpen});
+      localStorage.setItem(key, payload);
+      try { sessionStorage.setItem(key, payload); sessionStorage.setItem(key+'_wasOpen', isOpen?'1':'0'); } catch(_e2) {}
+      if (m) m.dataset.wasOpen = isOpen ? '1' : m.dataset.wasOpen || '0';
+      // FIX C-4: guardar ctx en key FIJA para que pageshow (BFCache restore) pueda recuperar
+      // el draft aunque el DOM sea restaurado sin valores en los inputs ocultos.
+      try {
+        sessionStorage.setItem('barita_quick_modal_ctx', JSON.stringify({
+          casoId, estId, isOpen: !!isOpen, ts: Date.now()
+        }));
+      } catch(_e2) {}
     } catch(_e) {}
   }
   function loadQuickDraft(casoId, estId) {
     try {
       const key = getQuickDraftKey(casoId, estId);
-      const raw = localStorage.getItem(key);
+      // Preferir sessionStorage (pestaña), fallback localStorage
+      let raw = null;
+      try { raw = sessionStorage.getItem(key); } catch(_e2) {}
+      if (!raw) raw = localStorage.getItem(key);
       if (!raw) return null;
       const d = JSON.parse(raw);
-      if (!d || !d.ts || Date.now() - d.ts > 24*60*60*1000) { localStorage.removeItem(key); return null; }
+      if (!d || !d.ts || Date.now() - d.ts > 24*60*60*1000) { try{localStorage.removeItem(key);}catch(_e){} try{sessionStorage.removeItem(key);}catch(_e){} return null; }
       return d;
     } catch(_e) { return null; }
   }
   function clearQuickDraft(casoId, estId) {
     try {
-      if (casoId!==undefined || estId!==undefined) localStorage.removeItem(getQuickDraftKey(casoId, estId));
-      else {
-        // fallback clear current modal draft
+      if (casoId!==undefined || estId!==undefined) {
+        const k = getQuickDraftKey(casoId, estId);
+        localStorage.removeItem(k);
+        try{ sessionStorage.removeItem(k); sessionStorage.removeItem(k+'_wasOpen'); }catch(_e2){}
+      } else {
         const c = document.getElementById('quick-modal-caso-id')?.value || '';
         const e = document.getElementById('quick-modal-est-id')?.value || '';
-        localStorage.removeItem(getQuickDraftKey(c,e));
+        const k = getQuickDraftKey(c,e);
+        localStorage.removeItem(k);
+        try{ sessionStorage.removeItem(k); sessionStorage.removeItem(k+'_wasOpen'); }catch(_e2){}
       }
+      // limpiar flag wasOpen del modal
+      const m=document.getElementById('quick-seguimiento-modal');
+      if(m) m.dataset.wasOpen='0';
+      // FIX C-4: limpiar key fija para que pageshow no reabra tras cierre deliberado
+      try { sessionStorage.removeItem('barita_quick_modal_ctx'); } catch(_e2) {}
     } catch(_e) {}
   }
   function ensureQuickModalPortal() {
@@ -1075,53 +1103,127 @@ const DashboardView = (() => {
     document.body.appendChild(modal);
     // backdrop click
     modal.addEventListener('click', (e) => { if (e.target === modal) window.DashboardView.cerrarQuickSeguimiento(); });
-    // autosave
+    // autosave con flush síncrono para visibilitychange
     const textoEl = document.getElementById('quick-modal-texto');
     const fechaEl = document.getElementById('quick-modal-proximo-fecha');
     const accionEl = document.getElementById('quick-modal-accion');
     let debounce=null;
+    const _flushQuickDraft = () => { clearTimeout(debounce); saveQuickDraft(); };
     const schedule = () => { clearTimeout(debounce); debounce=setTimeout(saveQuickDraft, 400); };
+    // exponer flush para uso externo (App.handleRoute)
+    try { window._baritaFlushQuickDraft = _flushQuickDraft; } catch(_e) {}
     if (textoEl) { textoEl.addEventListener('input', schedule); textoEl.addEventListener('change', schedule); }
     if (fechaEl) { fechaEl.addEventListener('input', schedule); fechaEl.addEventListener('change', schedule); }
     if (accionEl) accionEl.addEventListener('change', schedule);
-    // ESC
+    // ESC - solo si quick-modal está abierto
     document.addEventListener('keydown', (e) => {
       const m = document.getElementById('quick-seguimiento-modal');
-      if (e.key === 'Escape' && m && m.style.display !== 'none' && !m.classList.contains('hidden')) {
+      const isOpen = m && (m.style.display !== 'none' && !m.classList.contains('hidden') || m.classList.contains('is-open') || m.dataset.wasOpen==='1');
+      if (e.key === 'Escape' && isOpen) {
         e.stopPropagation();
-        window.DashboardView.cerrarQuickSeguimiento();
+        if (m && m.style.display !== 'none' && !m.classList.contains('hidden')) window.DashboardView.cerrarQuickSeguimiento();
       }
     });
-    // beforeunload
+    // beforeunload solo si hay contenido sucio
     window.addEventListener('beforeunload', (e) => {
-      if (isQuickModalDirty()) { e.preventDefault(); e.returnValue = 'Tienes un seguimiento sin guardar. ¿Salir?'; }
+      if (isQuickModalDirty()) { _flushQuickDraft(); e.preventDefault(); e.returnValue = 'Tienes un seguimiento sin guardar. ¿Salir?'; }
+      else {
+        const m=document.getElementById('quick-seguimiento-modal');
+        if(m && m.style.display!=='none' && !m.classList.contains('hidden')) _flushQuickDraft();
+      }
     });
-    // visibilitychange: al volver de otra ventana/pestaña, re-afirmar portal y guardar borrador al salir (incluso vacía si está abierta)
+    // visibilitychange: guardar SIEMPRE aunque vacío si está abierto, restaurar aunque vacío
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         const mHidden = document.getElementById('quick-seguimiento-modal');
-        const isVisibleHidden = mHidden && mHidden.style.display !== 'none' && !mHidden.classList.contains('hidden');
-        if (isVisibleHidden) saveQuickDraft();
+        const isVisibleHidden = mHidden && (mHidden.style.display !== 'none' && !mHidden.classList.contains('hidden') || mHidden.classList.contains('is-open'));
+        if (isVisibleHidden) _flushQuickDraft();
       }
       if (document.visibilityState === 'visible') {
         const m = document.getElementById('quick-seguimiento-modal');
         if (m) {
-          const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; return !!loadQuickDraft(c,e); }catch(_e){ return false; }})();
-          const wasOpen = !m.classList.contains('hidden') && m.style.display !== 'none';
+          // buscar draft por key actual o cualquier draft reciente isOpen (tolera cambio de school/uid)
+          let hasDraft = false;
+          try{
+            const c=document.getElementById('quick-modal-caso-id')?.value||'';
+            const e=document.getElementById('quick-modal-est-id')?.value||'';
+            const d=loadQuickDraft(c,e);
+            if(d && d.isOpen) hasDraft=true;
+            else {
+              // fallback: buscar cualquier draft isOpen reciente en sessionStorage
+              for(let i=0;i<sessionStorage.length;i++){
+                const k=sessionStorage.key(i);
+                if(k && k.startsWith('barita_quick_draft_')){
+                  try{ const dd=JSON.parse(sessionStorage.getItem(k)||'{}'); if(dd && dd.isOpen && Date.now()-dd.ts<86400000) {hasDraft=true; break;} }catch(_e){}
+                }
+              }
+            }
+          }catch(_e){}
+          const wasOpen = !m.classList.contains('hidden') && m.style.display !== 'none' || m.classList.contains('is-open') || m.dataset.wasOpen==='1';
           const shouldShow = wasOpen || hasDraft;
           if (shouldShow) {
             document.body.appendChild(m);
             m.style.display = 'flex';
             m.classList.remove('hidden');
+            m.classList.add('is-open');
             m.style.opacity = '1';
             m.style.visibility = 'visible';
             m.style.pointerEvents = 'auto';
             m.style.zIndex = '9999';
+            document.body.classList.add('has-persistent-modal');
           }
         }
       }
     });
-    window.addEventListener('pagehide', () => { if (isQuickModalDirty()) saveQuickDraft(); });
+    // pagehide/freeze para BFCache (Safari iOS) - guardar siempre si abierto, no solo dirty
+    ['pagehide','freeze','blur'].forEach(ev=> window.addEventListener(ev, () => {
+      const m=document.getElementById('quick-seguimiento-modal');
+      if(m && (m.style.display!=='none' && !m.classList.contains('hidden') || m.classList.contains('is-open'))) _flushQuickDraft();
+    }, {capture:true}));
+    // FIX C-3: pageshow con e.persisted=true → BFCache restore → el DOM puede haber vuelto
+    // a antes de que abrirQuickSeguimiento añadiera is-open/wasOpen/valores en inputs.
+    // Usamos la key FIJA 'barita_quick_modal_ctx' (escrita por saveQuickDraft, no depende del DOM)
+    // para detectar si había un modal abierto y forzar su reapertura.
+    window.addEventListener('pageshow', (e) => {
+      if (!e.persisted) return; // solo actuar en BFCache restore, no en carga normal
+      let ctx = null;
+      try { ctx = JSON.parse(sessionStorage.getItem('barita_quick_modal_ctx') || 'null'); } catch(_e) {}
+      // Si no hay ctx, o no estaba abierto, o expiró: nada que hacer
+      if (!ctx || !ctx.isOpen || Date.now() - ctx.ts > 86400000) return;
+      // Asegurar que el portal existe (BFCache pudo haber eliminado nodos dinámicos)
+      if (!document.getElementById('quick-seguimiento-modal')) {
+        try { DashboardView.ensureQuickModalPortal(); } catch(_e) {}
+      }
+      const modal = document.getElementById('quick-seguimiento-modal');
+      if (!modal) return;
+      // Re-afirmar visibilidad
+      document.body.appendChild(modal);
+      modal.style.display = 'flex';
+      modal.classList.remove('hidden');
+      modal.classList.add('is-open');
+      modal.dataset.wasOpen = '1';
+      modal.style.zIndex = '9999';
+      modal.style.opacity = '1';
+      modal.style.visibility = 'visible';
+      modal.style.pointerEvents = 'auto';
+      document.body.classList.add('has-persistent-modal');
+      // Restaurar campos desde draft usando ctx.casoId/ctx.estId (NO depende del DOM restaurado)
+      try {
+        const ci = document.getElementById('quick-modal-caso-id');
+        const ei = document.getElementById('quick-modal-est-id');
+        if (ci && !ci.value) ci.value = ctx.casoId || '';
+        if (ei && !ei.value) ei.value = ctx.estId || '';
+        const draft = loadQuickDraft(ctx.casoId, ctx.estId);
+        if (draft) {
+          const ti = document.getElementById('quick-modal-texto');
+          const fe = document.getElementById('quick-modal-proximo-fecha');
+          const ac = document.getElementById('quick-modal-accion');
+          if (ti && draft.texto && !ti.value) ti.value = draft.texto;
+          if (fe && draft.fecha && !fe.value) fe.value = draft.fecha;
+          if (ac && draft.accion) ac.value = draft.accion;
+        }
+      } catch(_e) {}
+    }, {capture: true});
   }
 
   function switchTab(tabId, btnElement) {
@@ -1207,6 +1309,12 @@ const DashboardView = (() => {
     onQuickAccionChange();
     modal.style.display = 'flex';
     modal.classList.remove('hidden');
+    modal.classList.add('is-open');
+    modal.dataset.wasOpen = '1';
+    document.body.classList.add('has-persistent-modal');
+    try{ const w=window.innerWidth-document.documentElement.clientWidth; document.documentElement.style.setProperty('--scrollbar-comp', w>0?w+'px':'0px'); }catch(_e){}
+    // Guardar inmediatamente aunque vacío para que visibilitychange hidden tenga isOpen
+    try { saveQuickDraft(); } catch(_e) {}
     // Restaurar borrador si existe para mismo caso/est (persistencia al navegar)
     try {
       const draft = loadQuickDraft(casoId, estudianteId);
@@ -1392,14 +1500,18 @@ const DashboardView = (() => {
     if (!forceDiscard && isQuickModalDirty()) {
       const ok = confirm('Tienes un seguimiento sin guardar. ¿Descartar y cerrar? El borrador quedará guardado 24h y se restaurará al reabrir.');
       if (!ok) return;
-      // usuario confirmó descartar vista, pero mantenemos borrador por si se arrepiente; solo ocultamos
     }
     modal.style.display = 'none';
     modal.classList.add('hidden');
+    modal.classList.remove('is-open');
+    modal.dataset.wasOpen='0';
+    document.body.classList.remove('has-persistent-modal');
+    document.documentElement.style.removeProperty('--scrollbar-comp');
+    // no borrar draft aquí para permitir restauración 24h; se borra en guardar exitoso
   }
   function cerrarQuickSeguimientoForzado() {
     const modal = document.getElementById('quick-seguimiento-modal');
-    if (modal) { modal.style.display='none'; modal.classList.add('hidden'); }
+    if (modal) { modal.style.display='none'; modal.classList.add('hidden'); modal.classList.remove('is-open'); modal.dataset.wasOpen='0'; document.body.classList.remove('has-persistent-modal'); document.documentElement.style.removeProperty('--scrollbar-comp'); }
   }
 
   function onQuickAccionChange() {
