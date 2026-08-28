@@ -963,11 +963,14 @@ const DashboardView = (() => {
     if (!container) return;
     // FIX: si modal está abierto, no destruir dashboard (paridad con NotasView:88) - incluye draft persistido
     const qmGuard = document.getElementById('quick-seguimiento-modal');
-    let isQuickOpen = qmGuard && (
-      (qmGuard.style.display !== 'none' && !qmGuard.classList.contains('hidden'))
-      || qmGuard.classList.contains('is-open')
-      || qmGuard.dataset.wasOpen === '1'
-    );
+    let isQuickOpen = !!window.__baritaQuickModalOpen;
+    if (!isQuickOpen) {
+      isQuickOpen = qmGuard && (
+        (qmGuard.style.display !== 'none' && !qmGuard.classList.contains('hidden'))
+        || qmGuard.classList.contains('is-open')
+        || qmGuard.dataset.wasOpen === '1'
+      );
+    }
     // fallback: draft isOpen en storage (cubre BFCache/delay sync)
     if (!isQuickOpen) {
       try {
@@ -981,6 +984,7 @@ const DashboardView = (() => {
     }
     if (isQuickOpen) {
       try {
+        window.__baritaQuickModalOpen = true;
         document.body.appendChild(qmGuard);
         qmGuard.style.display='flex';
         qmGuard.classList.remove('hidden');
@@ -1182,6 +1186,7 @@ const DashboardView = (() => {
           const wasOpen = !m.classList.contains('hidden') && m.style.display !== 'none' || m.classList.contains('is-open') || m.dataset.wasOpen==='1';
           const shouldShow = wasOpen || hasDraft;
           if (shouldShow) {
+            window.__baritaQuickModalOpen = true;
             document.body.appendChild(m);
             m.style.display = 'flex';
             m.classList.remove('hidden');
@@ -1217,6 +1222,7 @@ const DashboardView = (() => {
       const modal = document.getElementById('quick-seguimiento-modal');
       if (!modal) return;
       // Re-afirmar visibilidad
+      window.__baritaQuickModalOpen = true;
       document.body.appendChild(modal);
       modal.style.display = 'flex';
       modal.classList.remove('hidden');
@@ -1331,6 +1337,7 @@ const DashboardView = (() => {
     modal.classList.remove('hidden');
     modal.classList.add('is-open');
     modal.dataset.wasOpen = '1';
+    window.__baritaQuickModalOpen = true;
     document.body.classList.add('has-persistent-modal');
     try{ const w=window.innerWidth-document.documentElement.clientWidth; document.documentElement.style.setProperty('--scrollbar-comp', w>0?w+'px':'0px'); }catch(_e){}
     // Guardar inmediatamente aunque vacío para que visibilitychange hidden tenga isOpen
@@ -1521,6 +1528,7 @@ const DashboardView = (() => {
       const ok = confirm('Tienes un seguimiento sin guardar. ¿Descartar y cerrar? El borrador quedará guardado 24h y se restaurará al reabrir.');
       if (!ok) return;
     }
+    window.__baritaQuickModalOpen = false;
     modal.style.display = 'none';
     modal.classList.add('hidden');
     modal.classList.remove('is-open');
@@ -1530,6 +1538,7 @@ const DashboardView = (() => {
     // no borrar draft aquí para permitir restauración 24h; se borra en guardar exitoso
   }
   function cerrarQuickSeguimientoForzado() {
+    window.__baritaQuickModalOpen = false;
     const modal = document.getElementById('quick-seguimiento-modal');
     if (modal) { modal.style.display='none'; modal.classList.add('hidden'); modal.classList.remove('is-open'); modal.dataset.wasOpen='0'; document.body.classList.remove('has-persistent-modal'); document.documentElement.style.removeProperty('--scrollbar-comp'); }
   }

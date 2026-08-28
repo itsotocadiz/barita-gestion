@@ -403,9 +403,13 @@ const App = {
             if(!hasDraftSilent){ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('barita_quick_draft_')){ try{ const dd=JSON.parse(localStorage.getItem(k)||'{}'); if(dd&&dd.isOpen&&Date.now()-dd.ts<86400000){ hasDraftSilent=true; break; } }catch(_e){} } } }
           }
         } catch(_e2) {}
-        const isOpenSilent = qmSilent && (qmSilent.style.display !== 'none' && !qmSilent.classList.contains('hidden') || qmSilent.classList.contains('is-open') || qmSilent.dataset.wasOpen==='1');
+        let isOpenSilent = !!window.__baritaQuickModalOpen;
+        if (!isOpenSilent) {
+          isOpenSilent = qmSilent && (qmSilent.style.display !== 'none' && !qmSilent.classList.contains('hidden') || qmSilent.classList.contains('is-open') || qmSilent.dataset.wasOpen==='1');
+        }
         if (isOpenSilent || hasDraftSilent) {
           if (qmSilent) {
+            window.__baritaQuickModalOpen = true;
             document.body.appendChild(qmSilent);
             qmSilent.style.display='flex';
             qmSilent.classList.remove('hidden');
@@ -630,8 +634,12 @@ const App = {
       const qm = document.getElementById('quick-seguimiento-modal');
       if (qm) {
         const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; const school=(typeof Storage!=='undefined'&&Storage.activeSchool)?Storage.activeSchool:'demo'; const uid=(typeof Auth!=='undefined'&&Auth.currentUser&&(Auth.currentUser.id||Auth.currentUser.uid))?(Auth.currentUser.id||Auth.currentUser.uid):'anon'; const key=`barita_quick_draft_${school}_${uid}_${(c||'noCaso')}_${(e||'noEst')}`; const raw=localStorage.getItem(key); if(!raw) return false; const d=JSON.parse(raw); return d && d.ts && Date.now()-d.ts < 86400000 && (d.isOpen || d.texto||d.fecha||d.accion!=='registrar'); }catch(_e){ return false; }})();
-        const shouldShow = (qm.style.display !== 'none' && !qm.classList.contains('hidden')) || hasDraft;
+        let shouldShow = !!window.__baritaQuickModalOpen;
+        if (!shouldShow) {
+          shouldShow = (qm.style.display !== 'none' && !qm.classList.contains('hidden')) || hasDraft;
+        }
         if (shouldShow) {
+          window.__baritaQuickModalOpen = true;
           document.body.appendChild(qm);
           qm.style.display = 'flex';
           qm.classList.remove('hidden');

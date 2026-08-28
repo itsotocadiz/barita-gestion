@@ -455,10 +455,12 @@ Object.assign(Storage, {
         
         if (typeof App !== 'undefined' && App.initialized) {
           // No destruir modal si está abierto: silentSync preserva portal
-          let modalOpen = false;
+          let modalOpen = !!window.__baritaQuickModalOpen;
           try {
-            const qm = document.getElementById('quick-seguimiento-modal');
-            if (qm && (qm.style.display !== 'none' && !qm.classList.contains('hidden') || qm.classList.contains('is-open') || qm.dataset.wasOpen==='1')) modalOpen = true;
+            if (!modalOpen) {
+              const qm = document.getElementById('quick-seguimiento-modal');
+              if (qm && (qm.style.display !== 'none' && !qm.classList.contains('hidden') || qm.classList.contains('is-open') || qm.dataset.wasOpen==='1')) modalOpen = true;
+            }
             if (!modalOpen) {
               const ctxRaw = sessionStorage.getItem('barita_quick_modal_ctx');
               const ctx = ctxRaw ? JSON.parse(ctxRaw) : null;
