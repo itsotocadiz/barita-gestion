@@ -367,11 +367,16 @@ const App = {
     } catch(_e) {}
     const rawHash = window.location.hash || '';
     
-    // Evitar llamadas duplicadas idénticas si ya se renderizó con datos listos
+    // Evitar llamadas duplicadas + debounce 800ms para silentSync tras visibilitychange
     const ahora = Date.now();
     const isReady = typeof Storage !== 'undefined' && Storage.isReady;
     if (this._lastRouteHash === rawHash && this._lastRouteReady && !isSilentSync) {
-      console.log("DEBUG handleRoute - Ignorando llamada duplicada ya renderizada con datos listos para hash:", rawHash);
+      if (window.BARITA_DEBUG) console.debug("DEBUG handleRoute - Ignorando llamada duplicada ya renderizada con datos listos para hash:", rawHash);
+      return;
+    }
+    // Debounce extra para silentSync (Storage.initRealtimeSync) que spamea al volver de pestaña
+    if (isSilentSync && this._lastRouteHash === rawHash && this._lastRouteTime && Date.now() - this._lastRouteTime < 800) {
+      if (window.BARITA_DEBUG) console.debug("DEBUG handleRoute silent throttled <800ms");
       return;
     }
     this._lastRouteHash = rawHash;

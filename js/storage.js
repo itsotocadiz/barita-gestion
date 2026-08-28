@@ -256,8 +256,8 @@ const Storage = {
       }
     }
 
-    // FIX: no evitar refresh por fecha (evita fantasma tras cerrar)
-    // if (this.activeSchool === targetSchool && this.isReady) return;
+    // Throttle: evita re-fetch en cada focus si mismo colegio y hace <30s
+    if (this.activeSchool === targetSchool && this.isReady && this._lastSyncAt && Date.now() - this._lastSyncAt < 30000) return Promise.resolve();
 
     this.activeSchool = targetSchool;
     try { localStorage.setItem('barita_active_school', targetSchool); } catch (_e) {}
@@ -342,6 +342,11 @@ Object.assign(Storage, {
 
   async initRealtimeSync() {
     if (window.Auth && Auth.isLoggingOut) return Promise.resolve();
+    // Throttle: evita loop en cada visibilitychange (30s) y si ya hay sync en progreso
+    if (this._syncInProgress) return Promise.resolve();
+    if (this._lastSyncAt && Date.now() - this._lastSyncAt < 30000) return Promise.resolve();
+    this._syncInProgress = true;
+    this._lastSyncAt = Date.now();
     this.loadLocalMutations();
     // FIX: no bloquear re-fetch si ya está ready (evita fantasma tras cerrar)
 
@@ -471,16 +476,18 @@ Object.assign(Storage, {
           }
         }
         this.syncLocalMutationsToServer();
+        this._syncInProgress = false;
         resolve();
       } catch (err) {
         this.isReady = true;
+        this._syncInProgress = false;
         resolve();
       }
     });
   },
 
   async syncLocalMutationsToServer() {
-    console.log("Iniciando sincronización de mutaciones locales pendientes hacia Supabase...");
+    if (window.BARITA_DEBUG) console.debug("Iniciando sincronización de mutaciones locales pendientes hacia Supabase...");
     const client = (typeof window.getSupabaseClient === 'function')
       ? window.getSupabaseClient()
       : window.supabaseGestion;
@@ -489,13 +496,17 @@ Object.assign(Storage, {
     // Sincronizar anotaciones
     if (this.localMutations && this.localMutations.anotaciones) {
       const ids = Object.keys(this.localMutations.anotaciones);
+      if (ids.length === 0) return;
       for (const id of ids) {
         const anot = this.localMutations.anotaciones[id];
         try {
           const payload = this.prepareAnotacionPayload(anot);
           const { error } = await client.from('anotaciones').upsert(payload);
           if (!error) {
-            console.log(`Mutación local de anotación ${id} sincronizada con éxito en el servidor.`);
+            if (window.BARITA_DEBUG) console.debug(`Mutación local de anotación ${id} sincronizada con éxito en el servidor.`);
+            // Evict para no re-sincronizar en cada visibilitychange
+            delete this.localMutations.anotaciones[id];
+            this.persistLocalMutations();
           } else {
             console.warn(`Error al sincronizar anotación ${id}:`, error.message);
           }
@@ -649,7 +660,7 @@ Object.assign(Storage, {
   getEstudianteById(id) { 
     const list = this.getEstudiantes();
     const found = list.find(e => e.id === id) || null;
-    console.log("DEBUG getEstudianteById - id:", id, "found:", found);
+    if (window.BARITA_DEBUG) console.debug("DEBUG getEstudianteById - id:", id, "found:", found);
     return found;
   },
 

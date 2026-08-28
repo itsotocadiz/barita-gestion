@@ -47,7 +47,12 @@ const Auth = (() => {
     window.supabaseGestion.auth.onAuthStateChange(async (event, session) => {
       if (state.isLoggingOut) return;
       if (event === 'TOKEN_REFRESHED') {
-        console.log("Ignorando TOKEN_REFRESHED para evitar re-suscripcion y parpadeo");
+        if (window.BARITA_DEBUG) console.debug("Ignorando TOKEN_REFRESHED para evitar re-suscripcion y parpadeo");
+        return;
+      }
+      // Throttle INITIAL_SESSION en visibilitychange (Supabase lo re-dispara al volver de pestaña)
+      if (event === 'INITIAL_SESSION' && typeof Storage !== 'undefined' && Storage._lastSyncAt && Date.now() - Storage._lastSyncAt < 5000) {
+        if (window.BARITA_DEBUG) console.debug("Ignorando INITIAL_SESSION throttled <5s");
         return;
       }
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
