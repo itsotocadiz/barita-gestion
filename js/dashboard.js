@@ -551,16 +551,8 @@ const DashboardView = (() => {
           if (isToday || isOverdue) compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: res.infraccionFecha || est.compromisoFechaTermino, infraccionDesc: res.infraccionDesc || 'Anotación negativa registrada', isToday, isOverdue });
         }
       } else if ((res.estado === 'cumplido' || res.estado === 'cumplido_pendiente') && !est.compromisoDescartado) {
-        // Vencido sin infracción pero fecha pasada → respeta visto por día
-        const esVencido = est.compromisoFechaTermino && est.compromisoFechaTermino < todayStr;
-        if (esVencido) {
-          if (isAlertaLeida('', est.id)) { /* visto hoy */ } else {
-            compromisosIncumplidos.push({ est, estNombre, cursoNombre, infraccionFecha: est.compromisoFechaTermino, infraccionDesc: 'Periodo vencido pendiente de alta', isToday: false, isOverdue: true });
-          }
-        } else {
-          if (isAlertaLeida('', est.id)) return;
-          compromisosCumplidos.push({ est, estNombre, cursoNombre, fechaTermino: est.compromisoFechaTermino, isToday: est.compromisoFechaTermino === todayStr });
-        }
+        if (isAlertaLeida('', est.id)) return;
+        compromisosCumplidos.push({ est, estNombre, cursoNombre, fechaTermino: est.compromisoFechaTermino, isToday: est.compromisoFechaTermino === todayStr });
       }
     });
 
