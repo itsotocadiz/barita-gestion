@@ -238,7 +238,7 @@ const CasosView = {
             else if (c.tipo === 'medidas_pie') { bCol = '#8b5cf6'; bTxt = 'PIE'; }
 
             const tituloLimpio = Storage.safeHtml(c.titulo || 'Sin motivo').replace(/^Protocolo\s*\d+\s*[\u2014\-]\s*/gi, '');
-            const badge = `<span class="badge" style="background-color: ${bCol}; color:white; padding: 2px 6px; border-radius:4px; font-size:0.75rem; display: inline-block; min-width: 65px; text-align: center;">${bTxt}</span>`;
+            const badge = `<span class="badge barita-caso-badge" style="background-color: ${bCol};">${bTxt}</span>`;
             return `
               <div style="margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 ${badge}

@@ -279,13 +279,13 @@ const DashboardView = (() => {
     totalVencidos.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
     let html = `
-      <div class="card mb-3" style="border: 2px solid var(--badge-danger-border); border-left: 6px solid var(--badge-danger-text); background: var(--badge-danger-bg); border-radius: var(--radius-lg); padding: 1rem 1.25rem; box-shadow: var(--shadow-card); margin-bottom: 1.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.75rem;">
-          <div style="display: flex; align-items: center; justify-content: center; background: var(--badge-danger-bg); padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--badge-danger-border); color: var(--badge-danger-text);">${Icons.get('alert-triangle', 22)}</div>
+      <div class="card mb-3 barita-alert-card">
+        <div class="barita-alert-header">
+          <div class="barita-alert-icon">${Icons.get('alert-triangle', 22)}</div>
           <div>
             <h4 style="margin: 0; color: var(--badge-danger-text); font-size: 1.1rem; font-weight: var(--font-weight-title); display: flex; align-items: center; gap: 0.5rem;">
               Seguimientos Vencidos (Pendientes de días anteriores)
-              <span class="badge" style="background: var(--badge-danger-text); color: var(--text-inverse); font-weight: 700; font-size: 0.8rem; padding: 0.2rem 0.55rem; border-radius: 4px;">${totalVencidos.length} Pendiente${totalVencidos.length === 1 ? '' : 's'}</span>
+              <span class="badge barita-badge-danger">${totalVencidos.length} Pendiente${totalVencidos.length === 1 ? '' : 's'}</span>
             </h4>
             <p style="margin: 2px 0 0 0; color: var(--badge-danger-text); font-size: 0.85rem;">Por favor, realiza el seguimiento o cierra estos casos para ponerte al día.</p>
           </div>
