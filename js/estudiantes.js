@@ -4,6 +4,21 @@
    ================================================================ */
 
 (() => {
+// Helper robusto para ordenar por fecha+hora (soporta ISO, YYYY-MM-DD HH:mm y DD-MM-YYYY HH:mm) - Bitácora descendente: nuevas arriba
+function parseBaritaFechaToMs(str){
+  if(!str) return 0;
+  str = String(str).trim();
+  if(str.includes('T')){
+    const d=new Date(str);
+    if(!isNaN(d)) return d.getTime();
+  }
+  let m=str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0)).getTime();
+  m=str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+  if(m) return new Date(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0)).getTime();
+  const d=new Date(str);
+  return isNaN(d)?0:d.getTime();
+}
 const EstudiantesView = {
   _filtroActual: 'todas',
   _chatHistory: [],
@@ -191,13 +206,13 @@ const EstudiantesView = {
     let filteredRegistros = [];
     registros.forEach(r => {
       if (r.source === 'bitacora_estudiante') {
-        const dateR = new Date(r.fecha).getTime();
+        const dateR = parseBaritaFechaToMs(r.fecha);
         const isDuplicate = registros.some(other => 
           other.source === 'casos' && 
           other.texto === r.texto && 
-          !isNaN(dateR) && 
-          !isNaN(new Date(other.fecha).getTime()) &&
-          Math.abs(new Date(other.fecha).getTime() - dateR) < 300000 // Ventana de 5 minutos
+          dateR && 
+          parseBaritaFechaToMs(other.fecha) &&
+          Math.abs(parseBaritaFechaToMs(other.fecha) - dateR) < 300000 // Ventana de 5 minutos
         );
         if (!isDuplicate) {
           filteredRegistros.push(r);
@@ -208,7 +223,7 @@ const EstudiantesView = {
     });
     registros = filteredRegistros;
 
-    registros.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    registros.sort((a, b) => parseBaritaFechaToMs(b.fecha) - parseBaritaFechaToMs(a.fecha));
 
     const mostrarCantidad = this._mostrarTodasBitacora ? registros.length : 3;
     const visibles = registros.slice(0, mostrarCantidad);
@@ -216,7 +231,8 @@ const EstudiantesView = {
 
     let listaHtml = visibles.map(b => {
           const safeId = this.sanitizeId(b.id || b.fecha);
-          const fechaFormatted = isNaN(new Date(b.fecha).getTime()) ? new Date().toLocaleString() : new Date(b.fecha).toLocaleString();
+          const msB = parseBaritaFechaToMs(b.fecha);
+          const fechaFormatted = msB ? new Date(msB).toLocaleString('es-CL') : 'Fecha inválida';
           
           let headerText = `${fechaFormatted}${b.registradoPor ? ' | Registrado por: ' + Storage.safeHtml(b.registradoPor) : ''}`;
           if (b.isCasoEvent && b.casoTitulo) {
@@ -318,7 +334,7 @@ const EstudiantesView = {
         texto: '🏁 Seguimiento Finalizado',
         registradoPor: Auth.currentUser?.email || 'Sistema'
       });
-      caso.seguimiento.sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+      caso.seguimiento.sort((a,b) => parseBaritaFechaToMs(b.fecha) - parseBaritaFechaToMs(a.fecha));
       
       try {
         await Storage.saveCaso(caso);
@@ -627,7 +643,7 @@ const EstudiantesView = {
                    return '<div class="text-center py-4 text-muted">No hay eventos registrados en esta categoría.</div>';
                 }
                 
-                filtradas.sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+                filtradas.sort((a,b) => parseBaritaFechaToMs(b.fecha) - parseBaritaFechaToMs(a.fecha));
                 
                 const mostrarCantidad = this._mostrarTodas ? filtradas.length : 4;
                 const visibles = filtradas.slice(0, mostrarCantidad);
@@ -1539,7 +1555,7 @@ const EstudiantesView = {
         registradoPor: loggedUser
       });
       
-      est.bitacoraSeguimiento.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+      est.bitacoraSeguimiento.sort((a, b) => parseBaritaFechaToMs(b.fecha) - parseBaritaFechaToMs(a.fecha));
       
       Storage.saveEstudiante(est);
       this.renderDetalle(document.getElementById('app-content'), id, true);
@@ -1805,7 +1821,7 @@ const EstudiantesView = {
           est.bitacoraSeguimiento[idx].adjunto = fileInput.files[0].name;
         }
         
-        est.bitacoraSeguimiento.sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+        est.bitacoraSeguimiento.sort((a,b) => parseBaritaFechaToMs(b.fecha) - parseBaritaFechaToMs(a.fecha));
         
         await Storage.saveEstudiante(est, true);
         try{ if(typeof DashboardView!=='undefined' && DashboardView.limpiarVistoParaNuevoSeguimiento) DashboardView.limpiarVistoParaNuevoSeguimiento(null, estId); }catch(_e){}
