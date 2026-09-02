@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS public.dotacion_anual (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   colegio_id TEXT NOT NULL REFERENCES public.colegios(id) ON DELETE CASCADE,
-  funcionario_id UUID NOT NULL REFERENCES public.funcionarios(id) ON DELETE CASCADE,
+  funcionario_id TEXT NOT NULL REFERENCES public.funcionarios(id) ON DELETE CASCADE,
   anio INT NOT NULL CHECK (anio BETWEEN 2020 AND 2035),
   cargo TEXT,
   horas INT CHECK (horas BETWEEN 1 AND 44),
