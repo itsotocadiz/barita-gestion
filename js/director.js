@@ -6,7 +6,7 @@
 window.DirectoraView = (() => {
   return {
     render(container) {
-      App.setBreadcrumb('Directora');
+      App.setBreadcrumb(`Directora ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('director'):''}`);
       const stats = Storage.getStats();
       const anotaciones = Storage.getAnotacionesByEstudiante();
       const casos = Storage.getCasos();

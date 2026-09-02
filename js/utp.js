@@ -8,7 +8,7 @@ const UtpView = (() => {
   let currentTab = 'trabajo_pedagogico';
 
   function render(container) {
-    App.setBreadcrumb('UTP - Unidad Técnico Pedagógica');
+    App.setBreadcrumb(`UTP - Unidad Técnico Pedagógica ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('utp'):''}`);
 
     // 1. Persistencia de Pestaña Activa
     try {

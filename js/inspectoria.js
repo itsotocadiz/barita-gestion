@@ -6,7 +6,7 @@
 const InspectoriaView = (() => {
   return {
   render(container) {
-    App.setBreadcrumb('Inspectoría');
+    App.setBreadcrumb(`Inspectoría ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('inspectoria'):''}`);
     const anotaciones = Storage.getAnotacionesByEstudiante();
     const graves = anotaciones.filter(a => a && a.tipo === 'grave');
     const leves = anotaciones.filter(a => a && a.tipo === 'leve');

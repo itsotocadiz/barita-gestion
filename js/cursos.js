@@ -6,7 +6,7 @@
 (() => {
 const CursosView = {
   renderList(container) {
-    App.setBreadcrumb('Cursos');
+    App.setBreadcrumb(`Cursos ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('cursos'):''}`);
     
     console.log("CursosView.renderList - CACHE:", Storage.cache.estudiantes);
     const estudiantes = Storage.getEstudiantes().filter(e => e.activo !== false);

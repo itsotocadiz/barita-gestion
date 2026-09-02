@@ -10,7 +10,7 @@ const PiseView = (() => {
   let obligacionesData = {};
 
   function render(container) {
-    App.setBreadcrumb('PISE (Seguridad Escolar)');
+    App.setBreadcrumb(`PISE (Seguridad Escolar) ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('pise'):''}`);
 
     container.innerHTML = `
       <div style="text-align: center; padding: 3rem;">

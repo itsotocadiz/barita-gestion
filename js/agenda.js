@@ -227,7 +227,7 @@ const AgendaView = (() => {
   }
 
   function render() {
-    App.setBreadcrumb('Mi Agenda Personal');
+    App.setBreadcrumb(`Mi Agenda Personal ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('agenda'):''}`);
     const container = document.getElementById(containerId);
     if (!container) return;
 

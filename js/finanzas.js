@@ -11,7 +11,7 @@ const FinanzasView = (() => {
   };
 
   function render(container) {
-    App.setBreadcrumb('Finanzas');
+    App.setBreadcrumb(`Finanzas ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('finanzas'):''}`);
     state.pagos = Array.isArray((Storage && Storage.cache && Storage.cache.finanzasPagos)) ? Storage.cache.finanzasPagos.slice() : [];
     renderPagos(container, state.pagos);
   }

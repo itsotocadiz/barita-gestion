@@ -13,7 +13,7 @@ const DocumentosView = (() => {
       return;
     }
 
-    App.setBreadcrumb('Documentos Institucionales');
+    App.setBreadcrumb(`Documentos Institucionales ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('documentos'):''}`);
 
     let html = `
       <div class="card mb-4">
