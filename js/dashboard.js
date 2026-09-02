@@ -4,6 +4,7 @@
    ================================================================ */
 
 const DashboardView = (() => {
+  const S = (s) => (typeof Storage !== 'undefined' && Storage.escapeHtml) ? Storage.escapeHtml(s) : String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const CATEGORIAS_ALERTAS = [
     { key: 'seguimiento', titulo: 'Estudiante en Seguimiento', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', icon: Icons.get('search', 18) },
     { key: 'complejo', titulo: 'Estudiante Complejo (Protocolos Aplicados)', color: '#dc2626', bg: '#fef2f2', border: '#fecaca', icon: Icons.get('alert-triangle', 18) },
@@ -300,13 +301,13 @@ const DashboardView = (() => {
           <div>
             <div style="display: flex; align-items: center; flex-wrap: wrap;">
               <span class="badge" style="background: var(--badge-danger-bg); color: var(--badge-danger-text); border: 1px solid var(--badge-danger-border); font-size: 0.75rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-right: 0.5rem;">VENCIDO • ${item.fechaFormateada}</span>
-              <strong style="color: var(--text-primary); font-size: 0.95rem;">${item.estNombre}</strong>
-              <span style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-hover); padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.5rem;">${item.cursoNombre}</span>
+              <strong style="color: var(--text-primary); font-size: 0.95rem;">${S(item.estNombre)}</strong>
+              <span style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-hover); padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.5rem;">${S(item.cursoNombre)}</span>
             </div>
             <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; margin-top: 4px;">
-              <span>${item.categoryIcon}</span> [${item.categoryTitle}] ${item.tituloCaso}
+              <span>${item.categoryIcon}</span> [${S(item.categoryTitle)}] ${S(item.tituloCaso)}
             </div>
-            ${item.textoSeguimiento ? `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem; font-style: italic;">"${item.textoSeguimiento}"</div>` : ''}
+            ${item.textoSeguimiento ? `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem; font-style: italic;">"${S(item.textoSeguimiento)}"</div>` : ''}
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             ${canExecuteAlta() ? `
@@ -353,11 +354,11 @@ const DashboardView = (() => {
             <div style="flex: 1; min-width: 240px;">
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
                 <span class="badge" style="background: #ef4444; color: white; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.5rem;">HOY • ${item.horaStr}</span>
-                <strong style="color: #1e293b; font-size: 0.95rem;">${item.estNombre}</strong>
-                <span style="font-size: 0.8rem; color: #64748b; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 4px;">${item.cursoNombre}</span>
+                <strong style="color: #1e293b; font-size: 0.95rem;">${S(item.estNombre)}</strong>
+                <span style="font-size: 0.8rem; color: #64748b; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 4px;">${S(item.cursoNombre)}</span>
               </div>
-              <div style="font-size: 0.85rem; color: #334155; font-weight: 600;">📋 ${item.tituloCaso}</div>
-              ${item.textoSeguimiento ? `<div style="font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; font-style: italic;">"${item.textoSeguimiento}"</div>` : ''}
+              <div style="font-size: 0.85rem; color: #334155; font-weight: 600;">📋 ${S(item.tituloCaso)}</div>
+              ${item.textoSeguimiento ? `<div style="font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; font-style: italic;">"${S(item.textoSeguimiento)}"</div>` : ''}
             </div>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
               ${canExecuteAlta() ? `
@@ -571,10 +572,10 @@ const DashboardView = (() => {
           <div style="flex: 1; min-width: 240px;">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
               <span class="badge" style="background: #ef4444; color: white; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.5rem;">INCUMPLIDO HOY</span>
-              <strong style="color: #1e293b; font-size: 0.95rem;">${item.estNombre}</strong>
-              <span style="font-size: 0.8rem; color: #64748b; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 4px;">${item.cursoNombre}</span>
+              <strong style="color: #1e293b; font-size: 0.95rem;">${S(item.estNombre)}</strong>
+              <span style="font-size: 0.8rem; color: #64748b; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 4px;">${S(item.cursoNombre)}</span>
             </div>
-            <div style="font-size: 0.85rem; color: #991b1b; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">${Icons.get('alert-triangle', 14)} Infracción registrada: ${item.infraccionFecha}</div>
+            <div style="font-size: 0.85rem; color: #991b1b; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">${Icons.get('alert-triangle', 14)} Infracción registrada: ${S(item.infraccionFecha)}</div>
           </div>
           <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
             <button class="btn btn-sm btn-success inline-flex items-center gap-1" onclick="window.DashboardView.abrirQuickSeguimiento('', '${item.est.id}', 'Compromiso Incumplido', '${item.estNombre.replace(/'/g, "\\'")}')" style="font-weight:600; padding:0.4rem 0.85rem; font-size:0.85rem; border:none; background:#10b981; color:white;">${Icons.get('check', 14)} Registrar Seguimiento</button>
@@ -615,11 +616,11 @@ const DashboardView = (() => {
           <div id="${uniqueDomId}" style="background: #fff; border: 2px solid #10b981; border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 0.75rem; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.15); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; transition: all 0.35s ease;">
             <div style="flex: 1; min-width: 240px;">
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                <span class="badge" style="background: #10b981; color: white; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.5rem;">${badgeLabel}</span>
-                <strong style="color: #1e293b; font-size: 0.95rem;">${item.estNombre}</strong>
-                <span style="font-size: 0.8rem; color: #64748b; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 4px;">${item.cursoNombre}</span>
+                <span class="badge" style="background: #10b981; color: white; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.5rem;">${S(badgeLabel)}</span>
+                <strong style="color: #1e293b; font-size: 0.95rem;">${S(item.estNombre)}</strong>
+                <span style="font-size: 0.8rem; color: #64748b; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 4px;">${S(item.cursoNombre)}</span>
               </div>
-              <div style="font-size: 0.85rem; color: #065f46; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">${Icons.get('check-circle-2', 14)} ${descText}</div>
+              <div style="font-size: 0.85rem; color: #065f46; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">${Icons.get('check-circle-2', 14)} ${S(descText)}</div>
             </div>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
               ${canExecuteAlta() ? `
