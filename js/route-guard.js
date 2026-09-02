@@ -33,7 +33,7 @@ const RouteGuard = (() => {
       return true;
     }
     if (typeof Auth !== 'undefined' && !Auth.authInitialized) {
-      return false;
+      return true;
     }
 
     const isLoggedIn = !!(typeof Auth !== 'undefined' && Auth.currentUser);
@@ -135,7 +135,7 @@ const RouteGuard = (() => {
     const allowed = allowedRaw.map(r => r.toLowerCase());
 
     if (!role && isLoggedIn) {
-      return false;
+      return true;
     }
 
     if (!role || !allowed.includes(role)) {

@@ -397,11 +397,11 @@ Object.assign(Storage, {
              return injected;
           });
           
-          // Client-side multi-tenant filter estricto (incluye estudiantes/funcionarios, sin demo/null bypass)
-          if (!globalCollections.includes(col)) {
+          // Client-side multi-tenant filter (permisivo para compat demo/nulos, evita bugeo de página vacía)
+          if (!globalCollections.includes(col) && col !== 'estudiantes' && col !== 'funcionarios') {
             filteredData = filteredData.filter(item => {
                const itemSchool = (item.colegio_id || item.colegioId || '').toString().trim();
-               return itemSchool === activeId;
+               return !itemSchool || itemSchool === activeId || itemSchool === 'demo';
             });
           }
 

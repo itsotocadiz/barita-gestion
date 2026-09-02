@@ -50,11 +50,6 @@ const Auth = (() => {
         if (window.BARITA_DEBUG) console.debug("Ignorando TOKEN_REFRESHED para evitar re-suscripcion y parpadeo");
         return;
       }
-      // Throttle INITIAL_SESSION en visibilitychange (Supabase lo re-dispara al volver de pestaña)
-      if (event === 'INITIAL_SESSION' && typeof Storage !== 'undefined' && Storage._lastSyncAt && Date.now() - Storage._lastSyncAt < 5000) {
-        if (window.BARITA_DEBUG) console.debug("Ignorando INITIAL_SESSION throttled <5s");
-        return;
-      }
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
         if (session?.user) {
           const isSameUser = state.currentUser && state.currentUser.id === session.user.id;
