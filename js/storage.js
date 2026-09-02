@@ -144,7 +144,12 @@ const Storage = {
   
   persistLocalMutations() {
     try {
-      localStorage.setItem('barita_local_mutations', JSON.stringify(this.localMutations));
+      // No persistir RUT en localStorage (PII)
+      const clone = JSON.parse(JSON.stringify(this.localMutations));
+      if (clone.estudiantes) {
+        Object.values(clone.estudiantes).forEach(e => { if (e) delete e.rut; delete e.rut_completo; });
+      }
+      localStorage.setItem('barita_local_mutations', JSON.stringify(clone));
     } catch (e) {
       console.warn('Error saving local mutations', e);
     }

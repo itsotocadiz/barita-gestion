@@ -182,6 +182,19 @@ const Auth = (() => {
       const originalSession = sessionStorage.getItem('superadmin_original');
       if (originalSession) sessionStorage.removeItem('superadmin_original');
     } catch (_e) {}
+    // 3b. Limpiar PII NNA en storage persistente
+    try {
+      localStorage.removeItem('barita_local_mutations');
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('barita_quick_draft_') || k.startsWith('barita_quick_modal'))) localStorage.removeItem(k);
+      }
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i);
+        if (k && (k.startsWith('barita_quick_draft_') || k.startsWith('barita_quick_modal'))) sessionStorage.removeItem(k);
+      }
+      window.__baritaQuickModalOpen = false;
+    } catch (_e) {}
 
     // 4. Actualizar la UI inmediatamente
     const sidebar = document.querySelector('.sidebar');
