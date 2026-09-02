@@ -1,5 +1,8 @@
-// FLAG GLOBAL MODO PRUEBAS: Acceso Total Temporal para Todos los Roles
+// FLAG GLOBAL MODO PRUEBAS: solo localhost, nunca en producción
 window.ALLOW_ALL_ROLES_FULL_ACCESS = false;
+if (typeof window !== 'undefined' && window.ALLOW_ALL_ROLES_FULL_ACCESS && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  window.ALLOW_ALL_ROLES_FULL_ACCESS = false;
+}
 
 const RouteGuard = (() => {
   const roleMap = {
@@ -30,7 +33,7 @@ const RouteGuard = (() => {
       return true;
     }
     if (typeof Auth !== 'undefined' && !Auth.authInitialized) {
-      return true;
+      return false;
     }
 
     const isLoggedIn = !!(typeof Auth !== 'undefined' && Auth.currentUser);
@@ -132,7 +135,7 @@ const RouteGuard = (() => {
     const allowed = allowedRaw.map(r => r.toLowerCase());
 
     if (!role && isLoggedIn) {
-      return true;
+      return false;
     }
 
     if (!role || !allowed.includes(role)) {

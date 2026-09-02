@@ -377,20 +377,12 @@ Object.assign(Storage, {
 
           const { data, error } = await query;
           if (error) {
-             // Fallback to fetch without filter if it failed due to missing column
-             if (error.code === 'PGRST100' || error.message?.includes('colegio_id')) {
-                 const retry = await client.from(col).select('*');
-                 if (!retry.error) {
-                     var retryData = retry.data;
-                 } else {
-                     return;
-                 }
-             } else {
-                 return;
-             }
+             // Fallback eliminado: no exponer cross-tenant si falta columna (falla cerrado)
+             if (window.BARITA_DEBUG) console.warn(`[Tenant] skip ${col}:`, error.message);
+             return;
           }
           
-          let fetchedData = typeof retryData !== 'undefined' ? retryData : data;
+          let fetchedData = data;
           let filteredData = (fetchedData || []).map(item => {
              const injected = Storage.injectColegioId(item);
              if (col === 'eventos_agenda' && injected) {
@@ -400,11 +392,11 @@ Object.assign(Storage, {
              return injected;
           });
           
-          // Client-side multi-tenant filter for tables where we didn't filter server-side
-          if (!globalCollections.includes(col) && col !== 'estudiantes' && col !== 'funcionarios') {
+          // Client-side multi-tenant filter estricto (incluye estudiantes/funcionarios, sin demo/null bypass)
+          if (!globalCollections.includes(col)) {
             filteredData = filteredData.filter(item => {
                const itemSchool = (item.colegio_id || item.colegioId || '').toString().trim();
-               return !itemSchool || itemSchool === activeId || itemSchool === 'demo';
+               return itemSchool === activeId;
             });
           }
 
