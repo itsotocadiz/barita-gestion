@@ -61,9 +61,16 @@ const Auth = (() => {
         }
       } else if (event === 'SIGNED_OUT') {
         if (!state.currentUser || state._activeClient === window.supabaseGestion) _handleUserLoggedOut();
+      } else if (!session) {
+        state.authInitialized = true;
       }
     });
-
+    // Fallback: si no hay sesión inicial, marcar como inicializado tras 800ms
+    setTimeout(async () => {
+      if (!state.authInitialized) {
+        try { const { data } = await window.supabaseGestion.auth.getSession(); if (!data.session) state.authInitialized = true; } catch(_e){ state.authInitialized = true; }
+      }
+    }, 800);
   }
 
   async function _handleUserLoggedIn(user, client) {
@@ -121,6 +128,7 @@ const Auth = (() => {
       window.location.hash = '#/superadmin';
     }
 
+    state.authInitialized = true;
     showApp();
   }
 
@@ -128,6 +136,7 @@ const Auth = (() => {
     state.currentUser = null;
     state.currentRole = null;
     state._activeClient = null;
+    state.authInitialized = true;
     if (window.location.hash !== '#/') {
       window.location.hash = '#/';
     }
