@@ -575,7 +575,7 @@ const App = {
           try { 
             id ? CasosView.renderDetalle(contentBody, id) : CasosView.renderList(contentBody); 
           } catch(e) { 
-            contentBody.innerHTML = '<div class="card"><h2 class="text-danger">Error cargando Casos Graves</h2><p>' + e.message + '</p></div>'; 
+            contentBody.innerHTML = '<div class="card"><h2 class="text-danger">Error cargando Casos Graves</h2><p>' + S(e.message) + '</p></div>'; 
           } 
         },
 

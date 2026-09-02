@@ -100,9 +100,13 @@ const DATA = (() => {
       { id: 'cerrado', nombre: 'Cerrado', color: '#38a169', bgColor: '#c6f6d5' }
     ],
     estadosCaso: [
-      { id: 'abierto', nombre: 'Abierto', color: '#e53e3e', bgColor: '#fed7d7' },
-      { id: 'en_proceso', nombre: 'Activo', color: '#d69e2e', bgColor: '#fefcbf' },
-      { id: 'cerrado', nombre: 'Cerrado', color: '#38a169', bgColor: '#c6f6d5' }
+      { id: 'denuncia', nombre: 'Denuncia', color: '#e53e3e', bgColor: '#fed7d7', plazo: '24h', responsable: 'Convivencia' },
+      { id: 'investigacion', nombre: 'Investigación (10d)', color: '#dd6b20', bgColor: '#feebc8', plazo: '10 días hábiles', responsable: 'Convivencia' },
+      { id: 'medida', nombre: 'Medida', color: '#d69e2e', bgColor: '#fefcbf', plazo: '5 días', responsable: 'Dirección' },
+      { id: 'seguimiento', nombre: 'Seguimiento 15/30d', color: '#3182ce', bgColor: '#bee3f8', plazo: '15 y 30 días', responsable: 'Convivencia' },
+      { id: 'cerrado', nombre: 'Cerrado', color: '#38a169', bgColor: '#c6f6d5', plazo: '-', responsable: 'Dirección' },
+      { id: 'abierto', nombre: 'Abierto (legacy)', color: '#e53e3e', bgColor: '#fed7d7' },
+      { id: 'en_proceso', nombre: 'Activo (legacy)', color: '#d69e2e', bgColor: '#fefcbf' }
     ],
     tiposCaso: [
       { id: 'acoso', nombre: 'Acoso Escolar' },

@@ -516,8 +516,8 @@ const EstudiantesView = {
             <div class="card-header flex justify-between items-start gap-4" style="border:none; padding-bottom:0; flex-wrap: wrap;">
               <div style="flex: 1; min-width: 250px;">
                 <h2 style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                  <span>${est.nombres} ${est.apellidos}</span>
-                  ${(est.esEstudiantePIE || isPIEView) ? `<span class="badge inline-flex items-center gap-1" style="background: #0ea5e9; color: white; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 12px; font-weight: 600;">${Icons.get('puzzle', 16)} PIE</span>` : ''}
+                    <span>${S(est.nombres)} ${S(est.apellidos)}</span>
+                  ${(est.esEstudiantePIE || isPIEView) ? `<span class="badge inline-flex items-center gap-1" style="background: #0ea5e9; color: white; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 12px; font-weight: 600;">${Icons.get('puzzle', 16)} PIE</span>` : ''} ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('ficha_estudiante'):''}
                 </h2>
                 <div class="text-muted mt-1 mb-2">${curso ? curso.nombre : 'Sin curso'}</div>
                 <div class="flex items-center gap-2 mb-3" style="flex-wrap: wrap;">

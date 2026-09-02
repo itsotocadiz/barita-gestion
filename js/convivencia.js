@@ -73,7 +73,7 @@ const ConvivenciaView = (() => {
     let html = `
       <div class="card mb-4">
         <div class="card-header" style="background: var(--danger); color: white;">
-          <h3 class="card-title" style="margin: 0; display: inline-flex; align-items: center; gap: 0.5rem;">${Icons.get('alert-circle', 18)} Protocolos en Ejecución</h3>
+          <h3 class="card-title" style="margin: 0; display: inline-flex; align-items: center; gap: 0.5rem;">${Icons.get('alert-circle', 18)} Protocolos en Ejecución ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('convivencia'):''}</h3>
         </div>
         <div class="card-body">
           <p class="text-secondary mb-4">Estudiantes que actualmente tienen un protocolo activo sin finalizar.</p>

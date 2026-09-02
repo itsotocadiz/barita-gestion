@@ -360,7 +360,7 @@ Object.assign(Storage, {
         'config', 'cursos', 'estudiantes', 'funcionarios', 'acciones', 'anotaciones',
         'casos', 'eventos', 'atrasos', 'inasistencias', 'alertas_asistencia', 'alertas_utp',
         'gestiones_asistencia', 'alertas_inspectoria', 'derivaciones', 'eventos_agenda',
-        'documentos', 'usuarios', 'matriculas_anuales'
+        'documentos', 'usuarios', 'matriculas_anuales', 'dotacion_anual', 'caso_anotaciones'
       ];
       const client = (typeof window.getSupabaseClient === 'function')
         ? window.getSupabaseClient()
@@ -401,7 +401,7 @@ Object.assign(Storage, {
           if (!globalCollections.includes(col) && col !== 'estudiantes' && col !== 'funcionarios') {
             filteredData = filteredData.filter(item => {
                const itemSchool = (item.colegio_id || item.colegioId || '').toString().trim();
-               return !itemSchool || itemSchool === activeId || itemSchool === 'demo';
+               return !itemSchool || itemSchool === activeId;
             });
           }
 
@@ -1292,6 +1292,25 @@ Object.assign(Storage, {
     return (this.cache.funcionarios || []).filter(f => (f.colegioId || f.colegio_id || 'demo') === active && f.estado !== 'inactivo');
   },
   getFuncionarioById(id) { return this.cache.funcionarios.find(f => f.id === id) || null; },
+  /* Dotación anual continuidad 2025->2026 - paridad demo+terra */
+  getDotacionAnual(funcionarioId, anio) {
+    const a = String(anio||Storage.getActiveYear());
+    const list = this.cache.dotacion_anual || [];
+    return list.find(d=> String(d.funcionario_id)===String(funcionarioId) && String(d.anio)===a) || null;
+  },
+  getHistorialDotacion(funcionarioId) {
+    return (this.cache.dotacion_anual||[]).filter(d=> String(d.funcionario_id)===String(funcionarioId)).sort((a,b)=> a.anio - b.anio);
+  },
+  async saveDotacionAnual(dot) {
+    if (!dot.funcionario_id || !dot.anio) return;
+    dot.colegio_id = dot.colegio_id || Storage.activeSchool || 'demo';
+    if (!this.cache.dotacion_anual) this.cache.dotacion_anual=[];
+    const idx=this.cache.dotacion_anual.findIndex(d=> String(d.funcionario_id)===String(dot.funcionario_id) && String(d.anio)===String(dot.anio));
+    if(idx>=0) this.cache.dotacion_anual[idx]={...this.cache.dotacion_anual[idx], ...dot};
+    else this.cache.dotacion_anual.push(dot);
+    try{ const c=(typeof window.getSupabaseClient==='function')?window.getSupabaseClient():null; if(c) await c.from('dotacion_anual').upsert(dot, {onConflict:'colegio_id,funcionario_id,anio'}); }catch(e){ console.warn('saveDotacion',e.message); }
+    return dot;
+  },
   
   prepareFuncionarioPayload(func) {
     return {
@@ -1629,13 +1648,51 @@ Object.assign(Storage, {
     }).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   },
   
+  /* DUAL Manual + LIRMI Excel - vinculación caso_anotaciones */
+  async vincularAnotacionesACaso(casoId, anotacionIds, origen = 'manual') {
+    if (!casoId || !Array.isArray(anotacionIds) || anotacionIds.length === 0) return;
+    const cleanIds = [...new Set(anotacionIds.map(String))];
+    const colegioId = Storage.activeSchool || 'demo';
+    // Validar tenant: solo anotaciones del mismo colegio
+    const validIds = cleanIds.filter(aid => {
+      const a = (this.cache.anotaciones||[]).find(x=>String(x.id)===String(aid));
+      if (!a) return false;
+      const aColegio = String(a.colegio_id||a.colegioId||'demo');
+      return aColegio===String(colegioId);
+    });
+    if (validIds.length===0) return;
+    const payload = validIds.map(aid => ({ caso_id: casoId, anotacion_id: aid, colegio_id: colegioId, origen }));
+    try {
+      const client = (typeof window.getSupabaseClient === 'function') ? window.getSupabaseClient() : null;
+      if (client) await client.from('caso_anotaciones').upsert(payload, { onConflict: 'caso_id,anotacion_id' });
+    } catch (e) { console.warn('vincularAnotacionesACaso:', e.message); }
+    // Cache local espejo en caso.seguimiento no, solo puente
+    const caso = this.getCasoById(casoId);
+    if (caso) { caso.anotacionesVinculadas = [...new Set([...(caso.anotacionesVinculadas||[]), ...validIds])]; caso.evidencia_origen = origen; }
+  },
+  async getAnotacionesDeCaso(casoId) {
+    if (!casoId) return [];
+    try {
+      const client = (typeof window.getSupabaseClient === 'function') ? window.getSupabaseClient() : null;
+      if (client) {
+        const { data } = await client.from('caso_anotaciones').select('anotacion_id').eq('caso_id', casoId);
+        const ids = (data||[]).map(r=>r.anotacion_id);
+        return (this.cache.anotaciones||[]).filter(a=>ids.includes(String(a.id)));
+      }
+    } catch(_e){}
+    const caso = this.getCasoById(casoId);
+    return (this.cache.anotaciones||[]).filter(a=>(caso?.anotacionesVinculadas||[]).includes(String(a.id)));
+  },
   async saveCaso(caso) {
     if (!Auth.canWriteCasos()) { App.showToast("No tienes permisos", "danger"); return; }
     if (!caso.id) {
       caso.id = this.generateId();
       caso.fecha = caso.fecha || new Date().toISOString();
-      caso.estado = caso.estado || 'abierto';
+      caso.estado = caso.estado || 'denuncia';
     }
+    caso.anio = caso.anio || parseInt(Storage.getActiveYear()) || new Date().getFullYear();
+    caso.evidencia_origen = caso.evidencia_origen || 'manual';
+    caso.plazo_dias = caso.plazo_dias || 10;
     
     // Quick Login mode
     if (Auth.currentUser && Auth.currentUser.uid.startsWith('test-user')) {
@@ -1674,6 +1731,10 @@ Object.assign(Storage, {
       estado: caso.estado || 'abierto',
       tipo: caso.tipo || 'seguimiento',
       fecha: caso.fecha || new Date().toISOString(),
+      anio: caso.anio || parseInt(Storage.getActiveYear()) || new Date().getFullYear(),
+      semaforo_origen: caso.semaforo_origen || null,
+      evidencia_origen: caso.evidencia_origen || 'manual',
+      protocolo_checklist_id: caso.protocolo_checklist_id || null,
       creado_por_id: caso.creado_por_id || caso.creadoPorId || null,
       seguimiento: Array.isArray(caso.seguimiento) ? caso.seguimiento : [],
       estudiantesInvolucrados: Array.isArray(caso.estudiantesInvolucrados) ? caso.estudiantesInvolucrados : (Array.isArray(caso.estudiantes_involucrados) ? caso.estudiantes_involucrados : [])

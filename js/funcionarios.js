@@ -163,7 +163,8 @@ const FuncionariosView = {
             <div class="card-header flex justify-between items-center" style="border:none; padding-bottom:0;">
               <div>
                 <h2 style="margin: 0; font-size: 1.5rem;">${f.nombres} ${f.apellidos}</h2>
-                <div class="text-muted mt-1 mb-2">${cat ? cat.nombre : ''} • ${f.cargo || 'Sin cargo'}</div>
+                <div class="text-muted mt-1 mb-2">${cat ? cat.nombre : ''} • ${f.cargo || 'Sin cargo'} ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('ficha_funcionario'):''}</div>
+                ${(()=>{ const hist=(typeof Storage!=='undefined'&&Storage.getHistorialDotacion)?Storage.getHistorialDotacion(f.id):[]; if(hist.length===0) return ''; return `<div style="margin:0.5rem 0; padding:0.5rem; background:var(--bg-hover); border:1px solid var(--border-color); border-radius:6px; font-size:0.8rem;"><b>Continuidad ${hist.map(h=> `${h.anio}: ${Storage.escapeHtml(h.cargo||'—')} ${h.horas?`(${h.horas}h)`:''} <small>${S(h.tipo_contrato||'')}</small>`).join(' → ')}</b> <small class="text-muted">· paridad demo+terra</small></div>`; })()}
                 <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-hover); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); width: fit-content; cursor: pointer;" onclick="window.location.hash = '#/profesor'">
                   <input type="checkbox" disabled ${f.induccion && f.induccion.estado === 'completado' ? 'checked' : ''} style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary);">
                   <span style="font-weight: 600; color: ${f.induccion && f.induccion.estado === 'completado' ? 'var(--primary)' : 'var(--text-secondary)'}">Inducción Institucional</span>

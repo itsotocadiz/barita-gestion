@@ -31,15 +31,17 @@ window.injectMock2026 = async function() {
       const apellidosFunc = ['Silva','Rojas','Soto','Contreras','Sepúlveda','Morales','Pérez','González'];
       const roles = ['director','profesor','utp'];
 
-      // Generar exactamente 2 funcionarios de prueba para DEMO
+      // Generar exactamente 2 funcionarios de prueba - RUT válido módulo11 (rango reservado 99.x)
+      const dv = (num) => { let s=0,m=2; for(let i=String(num).length-1;i>=0;i--){ s+=parseInt(String(num)[i])*m; m=m===7?2:m+1; } let r=11-(s%11); return r===11?'0':r===10?'K':String(r); };
       for (let i = 0; i < 2; i++) {
         const nombre = nombresFunc[i % nombresFunc.length];
         const apellido1 = apellidosFunc[i % apellidosFunc.length];
         const apellido2 = apellidosFunc[(i + 1) % apellidosFunc.length];
+        const baseRut = 99000000 + i;
 
         const f = {
           id: `mock_func_${activeSchool}_${i}`,
-          rut: `1${i}.444.555-${i}`,
+          rut: `99.000.00${i}-${dv(baseRut)}`,
           nombres: nombre,
           apellidos: `${apellido1} ${apellido2}`,
           email: `${nombre.toLowerCase()}.${apellido1.toLowerCase()}@colegiodemo.cl`,
@@ -80,20 +82,21 @@ window.injectMock2026 = async function() {
           const apellido1 = apellidosFunc[estCount % apellidosFunc.length];
           const apellido2 = apellidosFunc[(estCount + 2) % apellidosFunc.length];
 
+          const baseEst = 99100000 + estCount*2 + i;
           const est = {
             id: `mock_est_${activeSchool}_${curso.id}_${i}`,
-            rut: `2${Math.floor(1000000 + Math.random() * 9000000)}-${Math.floor(Math.random() * 9)}`,
+            rut: `99.${String(baseEst).slice(2,5)}.${String(baseEst).slice(5,8)}-${dv(baseEst)}`,
             nombres: nombre,
             apellidos: `${apellido1} ${apellido2}`,
             curso: curso.id,
             estado: 'regular',
-            fechaNacimiento: `201${Math.floor(Math.random() * 5)}-0${Math.floor(1+Math.random()*9)}-1${Math.floor(Math.random()*9)}`,
-            direccion: 'Calle Demo 123',
+            fechaNacimiento: (()=>{ const orden=curso.orden||7; const año = orden<=6? (2021-Math.floor(Math.random()*1)) : (2012+Math.floor(Math.random()*2)); const mes=String(1+Math.floor(Math.random()*12)).padStart(2,'0'); const dia=String(1+Math.floor(Math.random()*28)).padStart(2,'0'); return `${año}-${mes}-${dia}`; })(),
+            direccion: '',
             apoderado: {
               nombre: `Apoderado ${apellido1}`,
               parentesco: 'Apoderado Titular',
-              telefono: '+569' + Math.floor(10000000 + Math.random() * 90000000),
-              email: 'apoderado.demo@test.com'
+              telefono: '',
+              email: ''
             },
             pise: {},
             pie: {},

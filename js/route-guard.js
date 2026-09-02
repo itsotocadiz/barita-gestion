@@ -1,8 +1,6 @@
-// FLAG GLOBAL MODO PRUEBAS: solo localhost, nunca en producción
-window.ALLOW_ALL_ROLES_FULL_ACCESS = false;
-if (typeof window !== 'undefined' && window.ALLOW_ALL_ROLES_FULL_ACCESS && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-  window.ALLOW_ALL_ROLES_FULL_ACCESS = false;
-}
+// FLAG GLOBAL MODO PRUEBAS: solo localhost, nunca en producción - inmutable
+const BARITA_ALLOW_ALL = (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1') && typeof localStorage !== 'undefined' && localStorage.getItem('barita_dev_bypass') === '1');
+Object.defineProperty(window, 'ALLOW_ALL_ROLES_FULL_ACCESS', { get() { return !!BARITA_ALLOW_ALL; }, set() {}, configurable: false });
 
 const RouteGuard = (() => {
   const roleMap = {
@@ -30,10 +28,10 @@ const RouteGuard = (() => {
 
   function requireRole(route) {
     if (typeof Auth !== 'undefined' && Auth.isLoggingOut) {
-      return true;
+      return false;
     }
     if (typeof Auth !== 'undefined' && !Auth.authInitialized) {
-      return true;
+      return false;
     }
 
     const isLoggedIn = !!(typeof Auth !== 'undefined' && Auth.currentUser);
@@ -42,33 +40,12 @@ const RouteGuard = (() => {
     if (role === 'direccion' || role === 'dirección') role = 'directora';
     if (role === 'pie') role = 'pie'; // keep case-insensitive
 
-    // Fallback inmediato si Auth.currentRole aun esta cargando asincronicamente de Supabase
+    // Fallback: rol solo desde DB, no hardcode email ni localStorage
     if (!role && isLoggedIn) {
-      const email = ((Auth.currentUser.email || Auth.currentUser.user_metadata?.email) || '').trim().toLowerCase();
-      if (email === 'itsotocadiz@gmail.com') {
-        role = 'superadmin';
-      } else if (email === 'admin@terra.cl') {
-        role = 'admin';
-      } else if (email === 'utp@terra.cl') {
-        role = 'utp';
-      } else if (email.startsWith('dire') && email.includes('terra')) {
-        role = 'directora';
-      } else if (email === 'conv@terra.cl') {
-        role = 'convivencia';
-      } else if (email === 'pie@terra.cl') {
-        role = 'PIE'.toLowerCase();
-      } else {
-        try {
-          const cachedRole = localStorage.getItem('barita_user_role');
-          if (cachedRole) {
-            role = cachedRole.toLowerCase();
-            if (role === 'direccion' || role === 'dirección') role = 'directora';
-          }
-        } catch (_e) {}
-      }
+      return false;
     }
 
-    if (window.ALLOW_ALL_ROLES_FULL_ACCESS) return true;
+    if (BARITA_ALLOW_ALL) return true;
 
     // 2. Restricciones estrictas por matriz de roles
 
@@ -117,25 +94,24 @@ const RouteGuard = (() => {
       }
     }
 
-    if (window.ALLOW_ALL_ROLES_FULL_ACCESS) return true;
+    if (BARITA_ALLOW_ALL) return true;
     
-    const userEmail = Auth.currentUser ? ((Auth.currentUser.email || Auth.currentUser.user_metadata?.email || '').trim().toLowerCase()) : '';
-    const isSuperEmail = userEmail === 'itsotocadiz@gmail.com';
     const isImpersonating = typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original');
-    const isSuperAdminReal = (role === 'superadmin') || (isSuperEmail && !isImpersonating);
+    const isSuperAdminReal = (role === 'superadmin') && !isImpersonating;
 
     if (isSuperAdminReal && route !== 'superadmin') {
       window.location.hash = '#/superadmin';
       return false;
     }
 
-    if (isSuperAdminReal || role === 'admin') return true;
+    if (isSuperAdminReal) return true;
+    // admin ya no bypass total, cae a roleMap
     const allowedRaw = roleMap[route];
     if (!allowedRaw) return true;
     const allowed = allowedRaw.map(r => r.toLowerCase());
 
     if (!role && isLoggedIn) {
-      return true;
+      return false;
     }
 
     if (!role || !allowed.includes(role)) {

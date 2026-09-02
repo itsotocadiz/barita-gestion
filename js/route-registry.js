@@ -36,7 +36,8 @@ const RouteRegistry = (() => {
       try {
         if (typeof CasosView !== 'undefined') id ? CasosView.renderDetalle(contentBody, id) : CasosView.renderList(contentBody);
       } catch (e) {
-        contentBody.innerHTML = `<div class="card"><h2 class="text-danger">Error cargando Casos Graves</h2><p>${e.message}</p></div>`;
+        const Sfn = (typeof S !== 'undefined') ? S : (typeof Storage !== 'undefined' && Storage.escapeHtml ? Storage.escapeHtml : (s=>String(s).replace(/</g,'&lt;')));
+        contentBody.innerHTML = `<div class="card"><h2 class="text-danger">Error cargando Casos Graves</h2><p>${Sfn(e.message)}</p></div>`;
       }
     },
     'consultas': (contentBody) => {

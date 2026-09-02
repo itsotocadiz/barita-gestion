@@ -24,8 +24,8 @@ const CasosView = {
             const e = Storage.getEstudianteById(estId);
             if (e) {
               const curso = e.curso ? DATA.getCurso(e.curso) : null;
-              verFichaButtons += `<a href="#/estudiantes/${e.id}" class="btn btn-sm btn-secondary inline-flex items-center gap-1" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; display: block; margin-bottom: 4px; text-align: center; font-weight: 600;">${Icons.get('external-link', 12)} Ficha ${e.nombres} ${e.apellidos.split(' ')[0]}</a>`;
-              return `<div><b>${e.nombres} ${e.apellidos}</b> <span class="text-muted" style="font-size: 0.75rem;">(${curso ? curso.nombre : 'Sin curso'})</span></div>`;
+              verFichaButtons += `<a href="#/estudiantes/${Storage.escapeHtml(e.id)}" class="btn btn-sm btn-secondary inline-flex items-center gap-1" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; display: block; margin-bottom: 4px; text-align: center; font-weight: 600;">${Icons.get('external-link', 12)} Ficha ${S(e.nombres)} ${S(e.apellidos.split(' ')[0])}</a>`;
+              return `<div><b>${S(e.nombres)} ${S(e.apellidos)}</b> <span class="text-muted" style="font-size: 0.75rem;">(${S(curso ? curso.nombre : 'Sin curso')})</span></div>`;
             }
             return '';
           }).join('');
@@ -61,9 +61,9 @@ const CasosView = {
         const motivoHtml = `
           <div>
             <span class="badge" style="background: ${badgeColor}; color: white; margin-bottom: 4px; display: inline-block;">${tipoName}</span>
-            <div style="font-weight: 600;">${caso.titulo || ''}</div>
-            <div class="text-muted" style="font-size: 0.75rem; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${caso.descripcion || ''}">${descSnippet}</div>
-            <div style="margin-top: 4px;"><a href="#/casos/${caso.id}" style="font-size: 0.75rem; text-decoration: underline; color: var(--primary); font-weight: 600;">Ver detalle</a></div>
+            <div style="font-weight: 600;">${S(caso.titulo || '')}</div>
+            <div class="text-muted" style="font-size: 0.75rem; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${S(caso.descripcion || '')}">${S(descSnippet)}</div>
+            <div style="margin-top: 4px;"><a href="#/casos/${Storage.escapeHtml(caso.id)}" style="font-size: 0.75rem; text-decoration: underline; color: var(--primary); font-weight: 600;">Ver detalle</a></div>
           </div>
         `;
         
@@ -77,8 +77,8 @@ const CasosView = {
           ultimoSegHtml = `
             <div style="font-size: 0.8rem;">
               <span class="badge" style="background: #f1f5f9; color: #334155; font-size: 0.7rem; border: 1px solid #cbd5e1; padding: 0.1rem 0.3rem;">${fechaStr}</span>
-              <div style="font-weight: 600; color: var(--text-primary); margin-top: 2px;">${accionName}</div>
-              ${lastSeg.texto ? `<div class="text-muted" style="font-size: 0.75rem; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${lastSeg.texto}</div>` : ''}
+              <div style="font-weight: 600; color: var(--text-primary); margin-top: 2px;">${S(accionName)}</div>
+              ${lastSeg.texto ? `<div class="text-muted" style="font-size: 0.75rem; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${S(lastSeg.texto)}</div>` : ''}
             </div>
           `;
         }
@@ -179,7 +179,7 @@ const CasosView = {
       : compromisosVigentes.map(item => `
           <tr>
             <td style="padding:1rem; vertical-align:middle;">
-              <b>${item.est.nombres} ${item.est.apellidos}</b>
+              <b>${S(item.est.nombres)} ${S(item.est.apellidos)}</b>
               <div style="font-size:0.8rem; color:#b45309; font-weight:500; margin-top:2px; display: inline-flex; align-items: center; gap: 4px;">${Icons.get('clock', 12)} Monitoreo de conducta activo: ${item.fechaInicio} al ${item.fechaTermino}</div>
             </td>
             <td style="padding:1rem; vertical-align:middle; text-align:center;">
@@ -192,7 +192,7 @@ const CasosView = {
       ? '<tr><td colspan="2" class="text-center text-muted py-4">No hay estudiantes en Seguimiento Institucional.</td></tr>'
       : seguimientoStudents.map(e => `
           <tr>
-            <td style="padding:1rem; vertical-align:middle;"><b>${e.nombres} ${e.apellidos}</b></td>
+            <td style="padding:1rem; vertical-align:middle;"><b>${S(e.nombres)} ${S(e.apellidos)}</b></td>
             <td style="padding:1rem; vertical-align:middle; text-align:center;">
               <a href="#/estudiantes" onclick="setTimeout(()=>EstudiantesView.renderDetalle(document.getElementById('app-content'), '${e.id}'), 100)" class="btn btn-sm btn-primary">Ir a Perfil</a>
             </td>
@@ -203,7 +203,7 @@ const CasosView = {
       ? '<tr><td colspan="2" class="text-center text-muted py-4">No hay estudiantes Complejos registrados.</td></tr>'
       : complejoStudents.map(e => `
           <tr>
-            <td style="padding:1rem; vertical-align:middle;"><b>${e.nombres} ${e.apellidos}</b></td>
+            <td style="padding:1rem; vertical-align:middle;"><b>${S(e.nombres)} ${S(e.apellidos)}</b></td>
             <td style="padding:1rem; vertical-align:middle; text-align:center;">
               <a href="#/estudiantes" onclick="setTimeout(()=>EstudiantesView.renderDetalle(document.getElementById('app-content'), '${e.id}'), 100)" class="btn btn-sm btn-primary">Ir a Perfil</a>
             </td>
@@ -568,6 +568,18 @@ const CasosView = {
             }).join('')}
           </select>
         </div>
+
+        <div class="form-group" style="border:1px solid var(--border-color); border-radius:8px; padding:0.75rem; background:var(--bg-hover);">
+          <label class="form-label" style="display:flex; align-items:center; gap:0.5rem;">${Icons.get('link',16)} Evidencia (Dual: Manual / LIRMI Excel) ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('casos'):''}</label>
+          <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="CasosView.cargarEvidenciaLirmiExcel()">📥 Importar Excel LIRMI</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="CasosView.refrescarListaAnotaciones()">↻ Ver anotaciones disponibles</button>
+          </div>
+          <div id="caso-evidencia-lista" style="max-height:160px; overflow:auto; border:1px solid var(--border-color); border-radius:6px; padding:0.5rem; background:var(--bg-card); font-size:0.85rem;">
+            <span class="text-muted">Seleccione estudiantes arriba para ver sus anotaciones, o importe Excel LIRMI.</span>
+          </div>
+          <small class="text-muted">Se guardará en <code>caso_anotaciones</code> con <code>origen: manual | lirmi_excel</code>. No comunica a apoderados.</small>
+        </div>
       </form>
     `;
     
@@ -579,7 +591,21 @@ const CasosView = {
     App.openModal('Registrar Caso Grave', html, footer);
   },
 
-  guardarCaso() {
+  cargarEvidenciaLirmiExcel() {
+    App.showToast('Use “Importar Excel” en Cursos o “Cargar Hoja de Vida” en Ficha Estudiante. Luego vuelva y pulse ↻', 'info');
+    window.location.hash = '#/cursos';
+  },
+  refrescarListaAnotaciones() {
+    const sel = document.getElementById('caso-ests');
+    const ids = sel ? Array.from(sel.selectedOptions).map(o=>o.value) : [];
+    const cont = document.getElementById('caso-evidencia-lista');
+    if (!cont) return;
+    if (ids.length===0) { cont.innerHTML = '<span class="text-muted">Seleccione al menos 1 estudiante para listar anotaciones.</span>'; return; }
+    const anotaciones = (Storage.cache.anotaciones||[]).filter(a=> ids.includes(String(a.estudianteId||a.estudiante_id)));
+    if (anotaciones.length===0) { cont.innerHTML = '<span class="text-muted">Sin anotaciones para esos estudiantes. Puede crear el caso manual (vacío) o importar Excel LIRMI primero.</span>'; return; }
+    cont.innerHTML = anotaciones.slice(0,30).map(a=> `<label style="display:flex; gap:0.5rem; padding:0.2rem 0;"><input type="checkbox" value="${Storage.escapeHtml(a.id)}" class="chk-evidencia"> <span>${S(new Date(a.fecha).toLocaleDateString())} - ${Storage.escapeHtml(a.descripcion||'').slice(0,80)} <small class="text-muted">[${Storage.escapeHtml(a.tipo||'')}]</small></span></label>`).join('') + (anotaciones.length>30? `<div class="text-muted">+${anotaciones.length-30} más...</div>`:'');
+  },
+  async guardarCaso() {
     const selectEsts = document.getElementById('caso-ests');
     const involucrados = Array.from(selectEsts.selectedOptions).map(opt => opt.value);
     
@@ -587,20 +613,29 @@ const CasosView = {
       ? `${Auth.userProfile.nombres} ${Auth.userProfile.apellidos || ''}` 
       : (Auth.currentUser?.email || 'Sistema');
 
+    const checks = document.querySelectorAll('#caso-evidencia-lista .chk-evidencia:checked');
+    const evidenciaIds = Array.from(checks).map(c=>c.value);
+    const origen = evidenciaIds.length>0 ? 'lirmi_excel' : 'manual';
+
     const caso = {
       tipo: document.getElementById('caso-tipo').value,
       descripcion: document.getElementById('caso-desc').value,
       estudiantesInvolucrados: involucrados,
       protocoloId: document.getElementById('caso-prot').value || null,
-      estado: 'abierto',
-      registradoPor: loggedUser
+      estado: 'denuncia',
+      registradoPor: loggedUser,
+      evidencia_origen: origen,
+      anotacionesVinculadas: evidenciaIds,
+      plazo_dias: 10
     };
     
-    const c = Storage.saveCaso(caso);
+    const saved = await Storage.saveCaso(caso);
+    const targetId = (saved && saved.id) ? saved.id : (Storage.cache.casos||[]).slice(-1)[0]?.id;
+    if (evidenciaIds.length>0 && targetId) { await Storage.vincularAnotacionesACaso(targetId, evidenciaIds, 'lirmi_excel'); }
     App.closeModal();
-    App.showToast('Caso grave registrado', 'danger');
+    App.showToast(evidenciaIds.length>0 ? 'Caso vinculado a '+evidenciaIds.length+' evidencia(s) LIRMI' : 'Caso grave registrado (manual)', 'success');
     App.updateBadges();
-    window.location.hash = `#/casos/${c.id}`;
+    if (targetId) window.location.hash = `#/casos/${targetId}`;
   },
 
   vincularMotivo(id, mId) {
@@ -723,9 +758,9 @@ const CasosView = {
               registradoPor: loggedUser
             });
             if (proximoVal) {
-              est.fechaProximoSeguimiento = proximaVal;
-              est.fechaProximo = proximaVal;
-              est.proximoSeguimiento = proximaVal;
+              est.fechaProximoSeguimiento = proximoVal;
+              est.fechaProximo = proximoVal;
+              est.proximoSeguimiento = proximoVal;
             }
             // activa flag según tipo de caso
             const tipoCaso = c.tipo || 'seguimiento';

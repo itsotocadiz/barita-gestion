@@ -98,7 +98,7 @@ var NotasView = (() => {
     }
 
     if (typeof App !== 'undefined' && App.setBreadcrumb) {
-      App.setBreadcrumb('Muro de Notas / Feedback');
+      App.setBreadcrumb(`Muro de Notas / Feedback ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('notas'):''}`);
     }
 
     focusedNotaId = routeId || parseQueryId();

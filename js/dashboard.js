@@ -842,7 +842,7 @@ const DashboardView = (() => {
   }
 
   function render(container) {
-    App.setBreadcrumb('Dashboard Principal');
+    App.setBreadcrumb(`Dashboard Principal ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('dashboard'):''}`);
     const role = Auth.currentRole;
 
     if (role === 'postulante' || role === 'directivo') {

@@ -179,7 +179,7 @@ const PieView = (() => {
     container.innerHTML = `
       <div class="card mb-4" style="border-top: 4px solid var(--primary);">
         <div class="card-header">
-          <h2 style="margin:0; color: var(--primary); display: inline-flex; align-items: center; gap: 0.5rem;">${Icons.get('graduation-cap', 22)} PIE - Estudiantes con Necesidades Educativas Especiales</h2>
+          <h2 style="margin:0; color: var(--primary); display: inline-flex; align-items: center; gap: 0.5rem;">${Icons.get('graduation-cap', 22)} PIE - Estudiantes con Necesidades Educativas Especiales ${typeof BaritaHelp!=='undefined'?BaritaHelp.create('pie'):''}</h2>
         </div>
       </div>
 
