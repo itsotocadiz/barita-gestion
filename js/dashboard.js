@@ -341,7 +341,7 @@ const DashboardView = (() => {
       let itemsHtml = '';
 
       itemsHtml += `
-        <div style="background: #ef4444; color: white; padding: 0.4rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.825rem; display: inline-flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; animation: pulse 2s infinite;">
+        <div class="barita-hoy-header">
           <span style="display: inline-flex; align-items: center; gap: 0.35rem;">${Icons.get('bell', 14)} SEGUIMIENTOS PROGRAMADOS PARA HOY (${hoyItems.length})</span>
         </div>
       `;
@@ -350,7 +350,7 @@ const DashboardView = (() => {
         const targetUrl = item.estudianteId ? `#/estudiantes/${item.estudianteId}` : `#/casos/${item.casoId}`;
         const uniqueDomId = `alerta-hoy-${item.casoId}-${item.estudianteId || ''}`;
         itemsHtml += `
-          <div id="${uniqueDomId}" style="background: #fff; border: 2px solid #ef4444; border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 0.75rem; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.15); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; transition: all 0.35s ease;">
+          <div id="${uniqueDomId}" class="barita-hoy-card">
             <div style="flex: 1; min-width: 240px;">
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
                 <span class="badge" style="background: #ef4444; color: white; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.5rem;">HOY • ${item.horaStr}</span>
