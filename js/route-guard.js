@@ -31,6 +31,9 @@ const RouteGuard = (() => {
       return false;
     }
     if (typeof Auth !== 'undefined' && !Auth.authInitialized) {
+      // Durante init, permite superadmin para no dejar #/superadmin en blanco (Auth.currentRole ya es superadmin)
+      const earlyRole = (typeof Auth !== 'undefined' && Auth.currentRole) ? Auth.currentRole.toLowerCase() : '';
+      if (route === 'superadmin' && earlyRole === 'superadmin') return true;
       return false;
     }
 
