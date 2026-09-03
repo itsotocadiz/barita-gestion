@@ -12,7 +12,7 @@ create extension if not exists "uuid-ossp";
 alter table storage.objects enable row level security;
 drop policy if exists "storage_tenant_select" on storage.objects;
 create policy "storage_tenant_select" on storage.objects for select
-using (bucket_id in ('barita-docs','barita-attachments') and (LOWER(TRIM(public.get_my_role()))='superadmin' or owner = auth.uid() or true));
+using (bucket_id in ('barita-docs','barita-attachments') and (LOWER(TRIM(public.get_my_role()))='superadmin' or owner = auth.uid()));
 drop policy if exists "storage_tenant_insert" on storage.objects;
 create policy "storage_tenant_insert" on storage.objects for insert
 with check (bucket_id in ('barita-docs','barita-attachments') and auth.uid() is not null);
