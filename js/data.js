@@ -323,6 +323,52 @@ const DATA = (() => {
           { id: 'K-1', fase: 'Seguimiento', accion: 'Capacitación 30d', responsable: 'UTP', plazo: '30d' },
           { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
         ]
+      },
+      abandono_escolar: {
+        titulo: 'Protocolo 20 — Abandono Escolar', fuente: 'Art. Prevención', criterio_cierre: 'Revinculación', pasos: [
+          { id: 'E-1', fase: 'Ejecución', accion: 'Visita domiciliaria y derivación', responsable: 'Convivencia', plazo: '24h' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Seguimiento 7 y 30d', responsable: 'Convivencia', plazo: '7 y 30d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      embarazo_maternidad: {
+        titulo: 'Protocolo 21 — Embarazo/Maternidad', fuente: 'Art. Inclusión', criterio_cierre: 'Plan apoyo', pasos: [
+          { id: 'E-1', fase: 'Ejecución', accion: 'Plan apoyo académico y acompañamiento', responsable: 'Convivencia/UTP', plazo: '5d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      identidad_genero: {
+        titulo: 'Protocolo 22 — Identidad Género', fuente: 'Art. Inclusión', criterio_cierre: 'Acompañamiento', pasos: [
+          { id: 'E-1', fase: 'Ejecución', accion: 'Acompañamiento y plan', responsable: 'Convivencia', plazo: '5d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      salidas_pedagogicas: {
+        titulo: 'Protocolo 23 — Salidas Pedagógicas', fuente: 'Art. Seguridad', criterio_cierre: 'Informe', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Autorización apoderado y seguridad', responsable: 'Inspectoría', plazo: '48h' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Inspectoría', plazo: 'Final' }
+        ]
+      },
+      situaciones_externas: {
+        titulo: 'Protocolo 24 — Situaciones Externas', fuente: 'Art. Seguridad', criterio_cierre: 'Derivación', pasos: [
+          { id: 'E-1', fase: 'Ejecución', accion: 'Derivación externa', responsable: 'Dirección', plazo: '24h' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      ciberbullying: {
+        titulo: 'Protocolo 25 — Ciberbullying', fuente: 'Art. Convivencia', criterio_cierre: 'Talleres + seguimiento', pasos: [
+          { id: 'E-1', fase: 'Ejecución', accion: 'Resguardo evidencia digital', responsable: 'Convivencia', plazo: '24h' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Talleres 7d', responsable: 'Convivencia', plazo: '7d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe Anexo 7', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      riesgo_suicida: {
+        titulo: 'Protocolo 26 — Riesgo Suicida', fuente: 'Art. Protección', criterio_cierre: 'Derivación salud mental + seguimiento', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Contención y aviso apoderado', responsable: 'Convivencia', plazo: 'Inmediato' },
+          { id: 'E-1', fase: 'Ejecución', accion: 'Derivación CESFAM/Salud Mental 24h', responsable: 'Dirección', plazo: '24h' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Seguimiento 48h y 7d', responsable: 'Convivencia', plazo: '48h y 7d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
       }
     }
   };
