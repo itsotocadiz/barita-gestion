@@ -276,6 +276,53 @@ const DATA = (() => {
           { id: 'E-1', fase: 'Ejecución', accion: 'Solicitud + verificación', responsable: 'Inspectoría', plazo: '24h' },
           { id: 'C-2', fase: 'Cierre', accion: 'Acta', responsable: 'Inspectoría', plazo: 'Final' }
         ]
+      },
+      fuga_estudiantes: {
+        titulo: 'Protocolo 13 — Fuga Interna/Externa', fuente: 'Art. Seguridad', criterio_cierre: 'Retorno + informe', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Alerta, conteo, cierre accesos', responsable: 'Inspectoría', plazo: 'Inmediato' },
+          { id: 'E-1', fase: 'Ejecución', accion: 'Búsqueda y aviso apoderado/Carabineros', responsable: 'Dirección', plazo: 'Inmediato' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Entrevista retorno 24h', responsable: 'Convivencia', plazo: '24h' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      conductas_disruptivas: {
+        titulo: 'Protocolo 14 — Conductas Disruptivas', fuente: 'Art. Convivencia', criterio_cierre: 'Plan apoyo', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Contención en aula, derivación', responsable: 'Docente', plazo: 'Inmediato' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Plan apoyo 7 y 30d', responsable: 'Convivencia', plazo: '7 y 30d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Convivencia', plazo: 'Final' }
+        ]
+      },
+      uso_indebido_tecnologia: {
+        titulo: 'Protocolo 15 — Uso Indebido Tecnología', fuente: 'Art. Prevención', criterio_cierre: 'Compromiso + seguimiento', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Retiro dispositivo, resguardo evidencia', responsable: 'Inspectoría', plazo: 'Inmediato' },
+          { id: 'E-1', fase: 'Ejecución', accion: 'Entrevista y aviso apoderado', responsable: 'Convivencia', plazo: '24h' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Taller digital 7d', responsable: 'Convivencia', plazo: '7d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      administracion_medicamentos: {
+        titulo: 'Protocolo 16 — Administración Medicamentos', fuente: 'Art. Salud', criterio_cierre: 'Registro completo', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Recepción receta y autorización apoderado', responsable: 'Inspectoría', plazo: 'Inmediato' },
+          { id: 'E-1', fase: 'Ejecución', accion: 'Administración y registro libro', responsable: 'Inspectoría', plazo: 'Mismo día' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Registro', responsable: 'Inspectoría', plazo: 'Final' }
+        ]
+      },
+      prevencion_acoso: {
+        titulo: 'Protocolo 17 — Prevención Acoso', fuente: 'Art. Convivencia', criterio_cierre: 'Talleres + seguimiento', pasos: [
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Talleres curso 7d', responsable: 'Convivencia', plazo: '7d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      formacion_ciudadana: {
+        titulo: 'Protocolo 18 — Formación Ciudadana', fuente: 'Art. Gestión', criterio_cierre: 'Acta', pasos: [
+          { id: 'C-2', fase: 'Cierre', accion: 'Acta Consejo', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      resguardo_digital: {
+        titulo: 'Protocolo 19 — Resguardo Digital', fuente: 'Art. Prevención', criterio_cierre: 'Capacitación', pasos: [
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Capacitación 30d', responsable: 'UTP', plazo: '30d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
       }
     }
   };
