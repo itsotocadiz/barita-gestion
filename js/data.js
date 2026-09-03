@@ -225,6 +225,57 @@ const DATA = (() => {
           { id: 'K-1', fase: 'Seguimiento', accion: 'Primer seguimiento: 7 días hábiles; segundo: 30 días hábiles', responsable: 'Encargado de Convivencia', plazo: '7 y 30 días hábiles' },
           { id: 'C-2', fase: 'Cierre', accion: 'Emitir Informe de Cierre (Anexo 8) cuando se cumplen objetivos de intervención y hay estabilidad', responsable: 'Convivencia / Dirección General', plazo: 'Final' }
         ]
+      },
+      porte_armas: {
+        titulo: 'Protocolo 6 — Porte y Uso de Armas', fuente: 'Art. 15°; Anexo 9', criterio_cierre: 'Informe + entrega a Carabineros y seguimiento 15/30d', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Aislar objeto, resguardar integridad, no manipular', responsable: 'Funcionario testigo', plazo: 'Inmediato' },
+          { id: 'H-1', fase: 'Historial', accion: 'Notificar Dirección e Inspectoría, registrar N° caso', responsable: 'Inspectoría', plazo: 'Inmediato' },
+          { id: 'E-1', fase: 'Ejecución', accion: 'Denuncia a Carabineros/PDI (24h) y aviso apoderado', responsable: 'Dirección', plazo: '24h' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Seguimiento 7 y 30 días', responsable: 'Convivencia', plazo: '7 y 30d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe de Cierre Anexo 9', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      balaceras_externas: {
+        titulo: 'Protocolo 7 — Balaceras Externas / Balas Locas', fuente: 'Art. 16°', criterio_cierre: 'Simulacro + informe', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Alerta sismo/balacera, resguardo bajo mobiliario', responsable: 'Docente a cargo', plazo: 'Inmediato' },
+          { id: 'E-1', fase: 'Ejecución', accion: 'Evacuación según PISE, conteo estudiantes', responsable: 'Inspectoría', plazo: 'Inmediato' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Contención psicosocial 48h', responsable: 'Convivencia', plazo: '48h' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe + mejora PISE', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      emergencia_crisis: {
+        titulo: 'Protocolo 8 — Emergencia o Crisis', fuente: 'Art. PISE', criterio_cierre: 'Normalización + informe', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Activar PISE, evacuación', responsable: 'Encargado PISE', plazo: 'Inmediato' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Evaluación daños 24h', responsable: 'Dirección', plazo: '24h' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      desregulacion_cea: {
+        titulo: 'Protocolo 9 — Desregulación CEA', fuente: 'Art. Inclusión', criterio_cierre: 'Plan apoyo + seguimiento', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Contención, espacio regulado', responsable: 'Docente/PIE', plazo: 'Inmediato' },
+          { id: 'E-1', fase: 'Ejecución', accion: 'Aviso apoderado y PIE, registro', responsable: 'PIE', plazo: '24h' },
+          { id: 'K-1', fase: 'Seguimiento', accion: 'Seguimiento 7 y 30d', responsable: 'PIE', plazo: '7 y 30d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'PIE', plazo: 'Final' }
+        ]
+      },
+      cancelacion_matricula: {
+        titulo: 'Protocolo 10 — Cancelación Matrícula', fuente: 'Art. 14°', criterio_cierre: 'Resolución + apelación', pasos: [
+          { id: 'C-1', fase: 'Control', accion: 'Notificación apoderado con causales', responsable: 'Dirección', plazo: 'Inmediato' },
+          { id: 'E-1', fase: 'Ejecución', accion: 'Procedimiento apelación 5d', responsable: 'Dirección', plazo: '5d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Informe', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      cierre_anticipado: {
+        titulo: 'Protocolo 11 — Cierre Anticipado Año Escolar', fuente: 'Art. 15°', criterio_cierre: 'Resolución UTP', pasos: [
+          { id: 'E-1', fase: 'Ejecución', accion: 'Solicitud apoderado + informe UTP', responsable: 'UTP', plazo: '5d' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Resolución', responsable: 'Dirección', plazo: 'Final' }
+        ]
+      },
+      cambio_apoderado: {
+        titulo: 'Protocolo 12 — Cambio Apoderado', fuente: 'Art. Gestión', criterio_cierre: 'Acta + registro', pasos: [
+          { id: 'E-1', fase: 'Ejecución', accion: 'Solicitud + verificación', responsable: 'Inspectoría', plazo: '24h' },
+          { id: 'C-2', fase: 'Cierre', accion: 'Acta', responsable: 'Inspectoría', plazo: 'Final' }
+        ]
       }
     }
   };
