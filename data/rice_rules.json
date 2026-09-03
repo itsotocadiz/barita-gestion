@@ -185,7 +185,7 @@
         "senal": "engaño_falsificacion",
         "peso": 3,
         "categoria_orientadora": "GRAVE",
-        "keywords": ["engañó a funcionario", "falsificó", "alteró", "intervino"]
+        "keywords": ["engañó a funcionario", "alteró", "intervino"]
       },
       {
         "senal": "deshonestidad_academica",
