@@ -54,6 +54,10 @@ const App = {
     const btnMenu = document.getElementById('btn-menu');
     const sidebar = document.getElementById('sidebar');
     
+    // Año escolar - mover onchange inline index.html:57 a addEventListener (CSP Etapa 1)
+    const yearSel = document.getElementById('sidebar-year-select');
+    if (yearSel) yearSel.addEventListener('change', (e) => { Storage.setActiveYear(e.target.value); App.showToast('Año cambiado a ' + e.target.value, 'success'); setTimeout(() => App.handleRoute(), 150); });
+
     // Restaurar preferencia de colapsado en escritorio al cargar la app
     const isCollapsed = localStorage.getItem('barita_sidebar_collapsed') === 'true';
     if (isCollapsed && window.innerWidth > 768) {
@@ -347,11 +351,17 @@ const App = {
   },
 
   async handleRoute(isSilentSync = false) {
-    // FIX: re-afirmar portal SIEMPRE antes de early-return — si no, vuelve de pestaña con display:none (Alt+Tab)
+    // FIX: re-afirmar portal solo si Dashboard (no en Cursos) — evita modal en todas las vistas
     try {
+      const earlyView = (rawHash||'').split('/').filter(Boolean)[0] || 'dashboard';
+      if (earlyView !== 'dashboard') {
+        const qmEarly = document.getElementById('quick-seguimiento-modal');
+        if (qmEarly) { qmEarly.style.display='none'; qmEarly.classList.add('hidden'); document.body.classList.remove('has-persistent-modal'); }
+        throw new Error('skip no dashboard');
+      }
       const qm = document.getElementById('quick-seguimiento-modal');
       if (qm) {
-        const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; const school=(typeof Storage!=='undefined'&&Storage.activeSchool)?Storage.activeSchool:'demo'; const uid=(typeof Auth!=='undefined'&&Auth.currentUser&&(Auth.currentUser.id||Auth.currentUser.uid))?(Auth.currentUser.id||Auth.currentUser.uid):'anon'; const key=`barita_quick_draft_${school}_${uid}_${(c||'noCaso')}_${(e||'noEst')}`; const raw=localStorage.getItem(key); if(!raw) return false; const d=JSON.parse(raw); return d && d.ts && Date.now()-d.ts < 86400000 && (d.isOpen || d.texto||d.fecha||d.accion!=='registrar'); }catch(_e){ return false; }})();
+        const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; const school=(typeof Storage!=='undefined'&&Storage.activeSchool)?Storage.activeSchool:'demo'; const uid=(typeof Auth!=='undefined'&&Auth.currentUser&&(Auth.currentUser.id||Auth.currentUser.uid))?(Auth.currentUser.id||Auth.currentUser.uid):'anon'; const key=`barita_quick_draft_${school}_${uid}_${(c||'noCaso')}_${(e||'noEst')}`; const raw=localStorage.getItem(key); if(!raw) return false; const d=JSON.parse(raw); return d && d.ts && Date.now()-d.ts < 86400000 && (d.texto||d.fecha||d.accion!=='registrar'); }catch(_e){ return false; }})();
         const isVisible = qm.style.display !== 'none' && !qm.classList.contains('hidden');
         const shouldShow = isVisible || hasDraft;
         if (shouldShow) {
@@ -629,11 +639,12 @@ const App = {
     } catch (e) {
       contentBody.innerHTML = `<div class="card text-danger"><h2>Error del sistema</h2><p>${e.message}</p></div>`;
     }
-    // Re-afirmar modal persistente tras navegación (debe quedar visible sobre cualquier vista, incluso tras Alt+Tab)
+    // Re-afirmar modal persistente solo en Dashboard (no en Cursos etc.)
     try {
+      const curView = (hash||'').split('/').filter(Boolean)[0] || 'dashboard';
       const qm = document.getElementById('quick-seguimiento-modal');
-      if (qm) {
-        const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; const school=(typeof Storage!=='undefined'&&Storage.activeSchool)?Storage.activeSchool:'demo'; const uid=(typeof Auth!=='undefined'&&Auth.currentUser&&(Auth.currentUser.id||Auth.currentUser.uid))?(Auth.currentUser.id||Auth.currentUser.uid):'anon'; const key=`barita_quick_draft_${school}_${uid}_${(c||'noCaso')}_${(e||'noEst')}`; const raw=localStorage.getItem(key); if(!raw) return false; const d=JSON.parse(raw); return d && d.ts && Date.now()-d.ts < 86400000 && (d.isOpen || d.texto||d.fecha||d.accion!=='registrar'); }catch(_e){ return false; }})();
+      if (qm && curView === 'dashboard') {
+        const hasDraft = (()=>{ try{ const c=document.getElementById('quick-modal-caso-id')?.value||''; const e=document.getElementById('quick-modal-est-id')?.value||''; const school=(typeof Storage!=='undefined'&&Storage.activeSchool)?Storage.activeSchool:'demo'; const uid=(typeof Auth!=='undefined'&&Auth.currentUser&&(Auth.currentUser.id||Auth.currentUser.uid))?(Auth.currentUser.id||Auth.currentUser.uid):'anon'; const key=`barita_quick_draft_${school}_${uid}_${(c||'noCaso')}_${(e||'noEst')}`; const raw=localStorage.getItem(key); if(!raw) return false; const d=JSON.parse(raw); return d && d.ts && Date.now()-d.ts < 86400000 && (d.texto||d.fecha||d.accion!=='registrar'); }catch(_e){ return false; }})();
         let shouldShow = !!window.__baritaQuickModalOpen;
         if (!shouldShow) {
           shouldShow = (qm.style.display !== 'none' && !qm.classList.contains('hidden')) || hasDraft;
@@ -648,7 +659,16 @@ const App = {
           qm.style.pointerEvents = 'auto';
           qm.style.zIndex = '9999';
           document.body.classList.add('has-persistent-modal');
+        } else if (curView !== 'dashboard') {
+          qm.style.display = 'none';
+          qm.classList.add('hidden');
+          document.body.classList.remove('has-persistent-modal');
+          window.__baritaQuickModalOpen = false;
         }
+      } else if (curView !== 'dashboard' && qm) {
+        qm.style.display = 'none';
+        qm.classList.add('hidden');
+        document.body.classList.remove('has-persistent-modal');
       }
     } catch(_e) {}
     

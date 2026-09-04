@@ -18,10 +18,10 @@ const DocumentosView = (() => {
     let html = `
       <div class="card mb-4">
         <div class="card-header">
-          <h3 class="card-title">Subir Documento (PDF o DOCX)</h3>
+          <h3 class="card-title">Subir Documento (Markdown, TXT, PDF o Word)</h3>
         </div>
         <div class="card-body">
-          <p class="text-muted mb-4">El sistema extraerá inteligentemente el texto del documento para que la Inteligencia Artificial pueda consultarlo al generar informes.</p>
+          <p class="text-muted mb-4">El sistema extraerá el texto del documento para que la Inteligencia Artificial pueda consultarlo al responder en el Chatbot y generar informes.</p>
           <form id="form-upload-doc" onsubmit="event.preventDefault(); window.DocumentosView.procesarDocumento()">
             <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
               <div class="form-group">
@@ -40,8 +40,8 @@ const DocumentosView = (() => {
             </div>
             
             <div class="form-group">
-              <label class="form-label">Archivo</label>
-              <input type="file" id="doc-file" class="form-control" accept=".pdf,.docx" required>
+              <label class="form-label">Archivo (.md, .txt, .pdf, .docx)</label>
+              <input type="file" id="doc-file" class="form-control" accept=".md,.markdown,.txt,.pdf,.docx" required>
             </div>
             
             <button type="submit" id="btn-upload-doc" class="btn btn-primary">Extraer y Guardar Documento</button>
@@ -146,12 +146,15 @@ const DocumentosView = (() => {
     try {
       let textoExtraido = '';
 
-      if (file.name.toLowerCase().endsWith('.pdf')) {
+      const fileNameLower = file.name.toLowerCase();
+      if (fileNameLower.endsWith('.md') || fileNameLower.endsWith('.markdown') || fileNameLower.endsWith('.txt')) {
+        textoExtraido = await extraerTextoPlano(file);
+      } else if (fileNameLower.endsWith('.pdf')) {
         textoExtraido = await extraerTextoPDF(file);
-      } else if (file.name.toLowerCase().endsWith('.docx')) {
+      } else if (fileNameLower.endsWith('.docx')) {
         textoExtraido = await extraerTextoDOCX(file);
       } else {
-        throw new Error('Formato no soportado. Sube un PDF o DOCX.');
+        throw new Error('Formato no soportado. Sube un archivo Markdown (.md), texto (.txt), PDF o Word (.docx).');
       }
 
       if (!textoExtraido || textoExtraido.trim().length === 0) {
@@ -271,6 +274,21 @@ const DocumentosView = (() => {
     });
   }
 
+  async function extraerTextoPlano(file) {
+    if (typeof file.text === 'function') {
+      try {
+        const txt = await file.text();
+        return txt;
+      } catch (_e) {}
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result || '');
+      reader.onerror = reject;
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
+
   function generarResumenIA(texto, categoria) {
     if (!texto.trim()) return Promise.resolve({ resumen: '', tags: [] });
     const prompt = `Resume ESTE TEXTO en hasta 10 renglones y devuelve JSON compacto {resumen, tags lista}. Texto:\n\n${texto.slice(0, 7000)}`;
@@ -317,6 +335,7 @@ const DocumentosView = (() => {
     renderLista,
     procesarDocumento,
     eliminar,
+    extraerTextoPlano,
     extraerTextoPDF,
     extraerTextoDOCX,
     generarResumenIA,

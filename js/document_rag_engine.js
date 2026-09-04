@@ -10,7 +10,7 @@ const DocumentRAGEngine = (() => {
    * Extrae los párrafos o secciones más relevantes de un documento o lista de documentos
    * según la consulta del usuario.
    */
-  function buscarExtractos(query, { docId = null, categoria = null, maxChunks = 3, maxCharsPerChunk = 1500 } = {}) {
+  function buscarExtractos(query, { docId = null, categoria = null, maxChunks = 3, maxCharsPerChunk = 3000 } = {}) {
     if (!query || typeof query !== 'string' || !query.trim()) return [];
 
     let documentos = (typeof Storage !== 'undefined' && Storage.getDocumentos) ? Storage.getDocumentos() : [];
@@ -31,9 +31,9 @@ const DocumentRAGEngine = (() => {
 
     if (documentos.length === 0) return [];
 
-    // Palabras relevantes (longitud > 2)
+    // Palabras relevantes (longitud > 2) limpiando signos y signos de interrogación en español
     const queryWords = query.toLowerCase()
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!«»"']/g, '')
       .split(/\s+/)
       .filter(w => w.length >= 3);
 
@@ -43,22 +43,36 @@ const DocumentRAGEngine = (() => {
       const fullText = doc.texto || doc.resumen || '';
       if (!fullText) return;
 
-      let blocks = fullText.split(/\n\s*\n/).filter(b => b.trim().length > 20);
+      let blocks = [];
+      // Detección de secciones estructuradas en Markdown (##, ### o "Protocolo:")
+      if (/(\n|^)#{1,4}\s+|(\n|^)Protocolo:\s+/i.test(fullText)) {
+        const rawSections = fullText.split(/(?=(\n|^)#{1,4}\s+)/);
+        blocks = rawSections.map(s => s.trim()).filter(s => s.length > 20);
+      }
+      
+      // Fallback a párrafos estándar si no es markdown estructurado
+      if (blocks.length <= 1) {
+        blocks = fullText.split(/\n\s*\n/).filter(b => b.trim().length > 20);
+      }
       if (blocks.length <= 1) {
         blocks = fullText.split('\n').filter(b => b.trim().length > 20);
       }
 
       blocks.forEach((block, idx) => {
         const blockLower = block.toLowerCase();
+        const firstLine = (blockLower.split('\n')[0] || '');
         let score = 0;
 
         queryWords.forEach(word => {
-          if (blockLower.includes(word)) {
+          if (firstLine.includes(word)) {
+            score += 8; // Prioridad si la palabra clave coincide con el título o protocolo
+          } else if (blockLower.includes(word)) {
             score += 3;
           }
         });
 
         const qLower = query.toLowerCase();
+        // Casos normativos frecuentes
         if (queryLowerContains(qLower, ['roba', 'hurto', 'perdio', 'sustraccion', 'pertenencia', 'objeto'])) {
           if (blockLower.includes('hurto') || blockLower.includes('robo') || blockLower.includes('pertenencia') || blockLower.includes('objeto') || blockLower.includes('sustracción') || blockLower.includes('falta')) {
             score += 4;
@@ -67,6 +81,26 @@ const DocumentRAGEngine = (() => {
         if (queryLowerContains(qLower, ['material', 'materiales', 'util', 'utiles', 'cuaderno', 'libro', 'tarea', 'trae', 'traiga'])) {
           if (blockLower.includes('material') || blockLower.includes('útil') || blockLower.includes('cuaderno') || blockLower.includes('responsabilidad') || blockLower.includes('deber') || blockLower.includes('incumplimiento') || blockLower.includes('falta')) {
             score += 4;
+          }
+        }
+        if (queryLowerContains(qLower, ['cea', 'tea', 'autismo', 'desregulacion', 'desregulación', 'sensorial'])) {
+          if (blockLower.includes('cea') || blockLower.includes('tea') || blockLower.includes('espectro autista') || blockLower.includes('desregulación') || blockLower.includes('desregulacion')) {
+            score += 6;
+          }
+        }
+        if (queryLowerContains(qLower, ['celular', 'telefono', 'teléfono', 'movil', 'móvil', 'dispositivo', 'ia', 'inteligencia artificial'])) {
+          if (blockLower.includes('celular') || blockLower.includes('móvil') || blockLower.includes('dispositivo') || blockLower.includes('tecnología') || blockLower.includes('inteligencia artificial')) {
+            score += 6;
+          }
+        }
+        if (queryLowerContains(qLower, ['accidente', 'lesion', 'lesión', 'golpe', 'fractura', 'primeros auxilios'])) {
+          if (blockLower.includes('accidente') || blockLower.includes('primeros auxilios') || blockLower.includes('lesión') || blockLower.includes('enfermería')) {
+            score += 6;
+          }
+        }
+        if (queryLowerContains(qLower, ['acoso', 'bullying', 'ciberacoso', 'maltrato', 'agresion', 'agresión', 'pelea'])) {
+          if (blockLower.includes('acoso') || blockLower.includes('bullying') || blockLower.includes('maltrato') || blockLower.includes('ciberacoso')) {
+            score += 6;
           }
         }
 
