@@ -77,11 +77,32 @@ export default async function handler(req) {
       });
     }
 
-    if (prompt === '__list_models__') {
-      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      const listData = await listRes.json();
-      const modelNames = (listData.models || []).map(m => m.name.replace('models/', ''));
-      return new Response(JSON.stringify({ models: modelNames }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (prompt.startsWith('__benchmark__')) {
+      const models = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-3.6-flash'];
+      const results = [];
+      for (const m of models) {
+        const t0 = Date.now();
+        try {
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: 'Di hola y responde brevemente que eres' }] }],
+              generationConfig: { temperature: 0.1, maxOutputTokens: 60 }
+            })
+          });
+          const time = Date.now() - t0;
+          if (r.ok) {
+            const data = await r.json();
+            results.push({ model: m, ok: true, ms: time, text: data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() });
+          } else {
+            results.push({ model: m, ok: false, status: r.status, ms: time, err: (await r.text()).slice(0, 150) });
+          }
+        } catch (e) {
+          results.push({ model: m, ok: false, ms: Date.now() - t0, err: e.message });
+        }
+      }
+      return new Response(JSON.stringify({ benchmark: results }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     let geminiRes = null;
     let lastErr = '';
