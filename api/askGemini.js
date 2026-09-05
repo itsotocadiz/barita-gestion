@@ -77,47 +77,45 @@ export default async function handler(req) {
       });
     }
 
-    // Llamada real a Gemini — 3.6-flash con thinking MINIMAL (7s estable, Budget 0 da 500)
+    // Llamada optimizada a Gemini: Prioriza 2.0 Flash y 1.5 Flash sin 'thinking' para respuesta en 1-2s
     let geminiRes = null;
     let lastErr = '';
-    const maxAttempts = 2;
-    const attemptTimeouts = [10000, 14000]; // 10s + 14s retry
+    const modelsToTry = [
+      { name: 'gemini-2.0-flash', body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800 } } },
+      { name: 'gemini-1.5-flash', body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800 } } },
+      { name: 'gemini-3.6-flash', body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800, thinkingConfig: { thinkingLevel: "MINIMAL" } } } }
+    ];
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    for (const modelSpec of modelsToTry) {
       const controller = new AbortController();
-      const attemptTimeout = attemptTimeouts[attempt - 1];
-      const timeoutId = setTimeout(() => controller.abort(), attemptTimeout);
+      const timeoutId = setTimeout(() => controller.abort(), 6500); // 6.5s timeout por modelo
 
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelSpec.name}:generateContent?key=${apiKey}`;
         const r = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            contents: [{ parts: [{ text: prompt }] }], 
-            generationConfig: { 
-              temperature: 0.2, 
-              thinkingConfig: { thinkingLevel: "MINIMAL" } 
-            } 
-          }),
+          body: JSON.stringify(modelSpec.body),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
+
         if (r.ok) {
           geminiRes = r;
           break;
         } else {
           lastErr = await r.text();
-          // Si es un error de cliente (400, 401, 403), no tiene sentido reintentar
-          if (r.status === 400 || r.status === 401 || r.status === 403) {
+          // Si es 401/403 (clave inválida), no tiene sentido reintentar otros modelos
+          if (r.status === 401 || r.status === 403) {
             geminiRes = r;
             break;
           }
+          console.warn(`Modelo ${modelSpec.name} retornó ${r.status}, probando siguiente fallback...`);
         }
       } catch (e) {
         clearTimeout(timeoutId);
-        lastErr = e.name === 'AbortError' ? `Timeout de ${attemptTimeout / 1000}s en intento ${attempt}` : e.message;
-        console.warn(`Intento ${attempt} fallido:`, lastErr);
+        lastErr = e.name === 'AbortError' ? `Timeout de 6.5s en ${modelSpec.name}` : e.message;
+        console.warn(`Error en modelo ${modelSpec.name}:`, lastErr);
       }
     }
 

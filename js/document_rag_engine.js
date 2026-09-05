@@ -127,6 +127,12 @@ const DocumentRAGEngine = (() => {
     });
 
     candidates.sort((a, b) => b.score - a.score);
+
+    // Optimización de velocidad y tokens: si el candidato principal es muy preciso (score >= 11),
+    // inyectar solo los 1 o 2 mejores extractos para que Gemini procese en < 1 segundo
+    if (candidates.length > 0 && candidates[0].score >= 11) {
+      return candidates.slice(0, Math.min(2, maxChunks));
+    }
     return candidates.slice(0, maxChunks);
   }
 

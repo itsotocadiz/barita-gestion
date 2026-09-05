@@ -343,8 +343,8 @@ const ConsultasProfesoresView = (() => {
 
     const loaderId = 'loader-' + Date.now();
     history.innerHTML += `
-      <div id="${loaderId}" style="align-self: flex-start; max-width: 80%; background: white; padding: 1rem; border-radius: 12px; border-top-left-radius: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-style: italic; color: #666;">
-        👦 Consultando...
+      <div id="${loaderId}" style="align-self: flex-start; max-width: 80%; background: white; padding: 1rem; border-radius: 12px; border-top-left-radius: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-style: italic; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+        <span style="display: inline-block; animation: spin 1s linear infinite;">⚡</span> 👦 Consultando RICE 2026...
       </div>
     `;
     scrollToBottom();
@@ -378,25 +378,42 @@ const ConsultasProfesoresView = (() => {
         citasInfo = ragRes.citasInfo || [];
       }
 
-      // Incluir memoria previa del diálogo si existe
-      let memoriaPrevias = '';
-      if (historialConversacionMemory.length > 0) {
-        memoriaPrevias = `\n[HISTORIAL DE DIÁLOGO EN ESTA SESIÓN]:\n` + 
-          historialConversacionMemory.slice(-6).map(m => `${m.role === 'user' ? 'Usuario' : 'Bambino'}: ${m.content}`).join('\n') + '\n\n';
+      // Cache de sesión rápido para preguntas idénticas
+      const cacheKey = `bambino_cache_${hashPregunta(pregunta.trim().toLowerCase())}_${docSelected}`;
+      let respuestaRaw = '';
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) respuestaRaw = cached;
+      } catch (_e) {}
+
+      if (!respuestaRaw) {
+        // Incluir memoria previa del diálogo si existe
+        let memoriaPrevias = '';
+        if (historialConversacionMemory.length > 0) {
+          memoriaPrevias = `\n[HISTORIAL DE DIÁLOGO EN ESTA SESIÓN]:\n` + 
+            historialConversacionMemory.slice(-6).map(m => `${m.role === 'user' ? 'Usuario' : 'Bambino'}: ${m.content}`).join('\n') + '\n\n';
+        }
+
+        const schoolName = (ragRes && ragRes.colegioNombre) ? ragRes.colegioNombre : 'el establecimiento';
+
+        respuestaRaw = await AIClient.call(
+          `Eres Bambino, el asistente oficial de convivencia y normativas para ${schoolName}. Responde basándote en los documentos cargados para este colegio. 
+          
+          REGLAS DE VELOCIDAD Y CONCISIÓN:
+          - Sé directo, formal, empático y estructurado. Entrega de inmediato los pasos o la norma sin introducciones largas ni rodeos.
+          
+          REGLAS DE INTERACCIÓN Y CONTRA-PREGUNTAS:
+          - Si la consulta original es amplia, vaga o ambigua y requieres de mayor contexto (por ejemplo: si es básica o media, el nivel de gravedad, la implicancia de un protocolo RICE específico, etc.) para responder correctamente, haz una o dos contrapreguntas breves, muy claras y amigables.
+          - LIMITANTE DE TURNOS: Puedes hacer contrapreguntas aclaratorias un MÁXIMO DE 4 VECES en total durante la conversación. Si ya has hecho 4 preguntas (revisa el historial de diálogo) o si ya cuentas con el contexto suficiente antes de ese límite, debes obligatoriamente entregar la respuesta completa y estructurada basada en los reglamentos y protocolos oficiales.
+          - REGLA DE NO-METANARRATIVA: Nunca expliques al usuario que has alcanzado el límite de preguntas, ni des introducciones aclaratorias sobre los límites del sistema (por ejemplo, omitir frases como "Como hemos alcanzado el límite de preguntas..."). Entrega la respuesta directamente y de forma fluida.
+          - FORMATO DE RESPUESTA: Separa cada punto numerado (ej. 1., 2., 3.) con un salto de línea adicional doble (dejando un renglón en blanco entre puntos) para que la lectura sea limpia y espaciada.`,
+          memoriaPrevias + promptFinal
+        );
+
+        try {
+          if (respuestaRaw) sessionStorage.setItem(cacheKey, respuestaRaw);
+        } catch (_e) {}
       }
-
-      const schoolName = (ragRes && ragRes.colegioNombre) ? ragRes.colegioNombre : 'el establecimiento';
-
-      const respuestaRaw = await AIClient.call(
-        `Eres Bambino, el asistente oficial de convivencia y normativas para ${schoolName}. Responde basándote en los documentos cargados para este colegio. 
-        
-        REGLAS DE INTERACCIÓN Y CONTRA-PREGUNTAS:
-        - Si la consulta original es amplia, vaga o ambigua y requieres de mayor contexto (por ejemplo: si es básica o media, el nivel de gravedad, la implicancia de un protocolo RICE específico, etc.) para responder correctamente, haz una o dos contrapreguntas breves, muy claras y amigables.
-        - LIMITANTE DE TURNOS: Puedes hacer contrapreguntas aclaratorias un MÁXIMO DE 4 VECES en total durante la conversación. Si ya has hecho 4 preguntas (revisa el historial de diálogo) o si ya cuentas con el contexto suficiente antes de ese límite, debes obligatoriamente entregar la respuesta completa y estructurada basada en los reglamentos y protocolos oficiales.
-        - REGLA DE NO-METANARRATIVA: Nunca expliques al usuario que has alcanzado el límite de preguntas, ni des introducciones aclaratorias sobre los límites del sistema (por ejemplo, omitir frases como "Como hemos alcanzado el límite de preguntas..."). Entrega la respuesta directamente y de forma fluida.
-        - FORMATO DE RESPUESTA: Separa cada punto numerado (ej. 1., 2., 3.) con un salto de línea adicional doble (dejando un renglón en blanco entre puntos) para que la lectura sea limpia y espaciada.`,
-        memoriaPrevias + promptFinal
-      );
 
       historialConversacionMemory.push({ role: 'user', content: pregunta });
       historialConversacionMemory.push({ role: 'assistant', content: respuestaRaw });
