@@ -77,49 +77,41 @@ export default async function handler(req) {
       });
     }
 
-    // Llamada optimizada a Gemini: Prioriza 2.0 Flash y 1.5 Flash sin 'thinking' para respuesta en 1-2s
+    // Llamada directa a gemini-3.6-flash (modelo activo en Google Generative AI)
     let geminiRes = null;
-    const attemptsLog = [];
-    const modelsToTry = [
-      { name: 'gemini-2.0-flash', body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800 } } },
-      { name: 'gemini-1.5-flash', body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800 } } },
-      { name: 'gemini-3.6-flash', body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800, thinkingConfig: { thinkingLevel: "MINIMAL" } } } }
-    ];
+    let lastErr = '';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout seguro
 
-    for (const modelSpec of modelsToTry) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000); // 9s timeout por modelo
-
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelSpec.name}:generateContent?key=${apiKey}`;
-        const r = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(modelSpec.body),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (r.ok) {
-          geminiRes = r;
-          break;
-        } else {
-          const errText = await r.text();
-          attemptsLog.push({ model: modelSpec.name, status: r.status, err: errText.slice(0, 300) });
-          if (r.status === 401 || r.status === 403) {
-            geminiRes = r;
-            break;
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 800,
+            thinkingConfig: { thinkingLevel: "MINIMAL" }
           }
-        }
-      } catch (e) {
-        clearTimeout(timeoutId);
-        const isTimeout = e.name === 'AbortError';
-        attemptsLog.push({ model: modelSpec.name, status: isTimeout ? 408 : 0, err: e.message });
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (r.ok) {
+        geminiRes = r;
+      } else {
+        lastErr = await r.text();
       }
+    } catch (e) {
+      clearTimeout(timeoutId);
+      lastErr = e.name === 'AbortError' ? 'Tiempo de espera de Gemini agotado (20s)' : e.message;
     }
 
     if (!geminiRes) {
-      return new Response(JSON.stringify({ error: 'Error from Gemini API', details: attemptsLog }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Error from Gemini API', details: lastErr }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (!geminiRes.ok) {
