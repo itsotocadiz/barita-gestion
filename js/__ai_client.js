@@ -78,10 +78,17 @@ Si la consulta del usuario es muy abierta, breve o puede interpretarse de distin
       if (timeoutId) clearTimeout(timeoutId);
 
       if (!response.ok) {
-        if (response.status === 404 || response.status === 500) {
+        let errMsg = '';
+        try {
+          const errJson = await response.json();
+          errMsg = errJson.details || errJson.error || '';
+          if (typeof errMsg === 'object') errMsg = JSON.stringify(errMsg);
+        } catch (_e) {}
+
+        if (errMsg && errMsg.includes('API key missing')) {
           throw new Error('No has configurado tu API Key de Gemini. Ve al Panel de Control -> Umbrales e IA para ingresarla gratis.');
         }
-        throw new Error(`Error en el servidor de IA (${response.status}). Ingresa tu API Key en el Panel de Control.`);
+        throw new Error(errMsg || `Error en el servidor de IA (${response.status}).`);
       }
 
       const data = await response.json();

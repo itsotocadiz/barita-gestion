@@ -79,7 +79,7 @@ export default async function handler(req) {
 
     // Llamada optimizada a Gemini: Prioriza 2.0 Flash y 1.5 Flash sin 'thinking' para respuesta en 1-2s
     let geminiRes = null;
-    let lastErr = '';
+    const attemptsLog = [];
     const modelsToTry = [
       { name: 'gemini-2.0-flash', body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800 } } },
       { name: 'gemini-1.5-flash', body: { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800 } } },
@@ -88,7 +88,7 @@ export default async function handler(req) {
 
     for (const modelSpec of modelsToTry) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6500); // 6.5s timeout por modelo
+      const timeoutId = setTimeout(() => controller.abort(), 9000); // 9s timeout por modelo
 
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelSpec.name}:generateContent?key=${apiKey}`;
@@ -104,23 +104,22 @@ export default async function handler(req) {
           geminiRes = r;
           break;
         } else {
-          lastErr = await r.text();
-          // Si es 401/403 (clave inválida), no tiene sentido reintentar otros modelos
+          const errText = await r.text();
+          attemptsLog.push({ model: modelSpec.name, status: r.status, err: errText.slice(0, 300) });
           if (r.status === 401 || r.status === 403) {
             geminiRes = r;
             break;
           }
-          console.warn(`Modelo ${modelSpec.name} retornó ${r.status}, probando siguiente fallback...`);
         }
       } catch (e) {
         clearTimeout(timeoutId);
-        lastErr = e.name === 'AbortError' ? `Timeout de 6.5s en ${modelSpec.name}` : e.message;
-        console.warn(`Error en modelo ${modelSpec.name}:`, lastErr);
+        const isTimeout = e.name === 'AbortError';
+        attemptsLog.push({ model: modelSpec.name, status: isTimeout ? 408 : 0, err: e.message });
       }
     }
 
     if (!geminiRes) {
-      return new Response(JSON.stringify({ error: 'Error from Gemini API', details: lastErr }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Error from Gemini API', details: attemptsLog }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (!geminiRes.ok) {
