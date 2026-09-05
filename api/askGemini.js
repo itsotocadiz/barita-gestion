@@ -77,7 +77,12 @@ export default async function handler(req) {
       });
     }
 
-    // Llamada directa a gemini-3.6-flash (modelo activo en Google Generative AI)
+    if (prompt === '__list_models__') {
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      const listData = await listRes.json();
+      const modelNames = (listData.models || []).map(m => m.name.replace('models/', ''));
+      return new Response(JSON.stringify({ models: modelNames }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     let geminiRes = null;
     let lastErr = '';
     const controller = new AbortController();
