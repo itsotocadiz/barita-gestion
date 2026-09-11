@@ -106,64 +106,87 @@ const Validator = (() => {
     if (inputEl.value) handler();
   }
 
-  function getDriveFileId(url) {
-    if (!url || typeof url !== 'string') return null;
-    try {
-      const parsed = new URL(url);
-      const host = parsed.hostname.toLowerCase();
-      if (!host.endsWith('drive.google.com') && !host.endsWith('docs.google.com')) return null;
-      const pathMatch = parsed.pathname.match(/\/file\/d\/([-\w]{25,})/i);
-      if (pathMatch && pathMatch[1]) return pathMatch[1];
-      const idParam = parsed.searchParams.get('id');
-      if (idParam && /^[-\w]{25,}$/.test(idParam)) return idParam;
-    } catch (_) {}
-    return null;
-  }
-
-  function isDriveUrl(url) {
-    return !!getDriveFileId(url);
-  }
-
   function getYoutubeVideoId(url) {
     if (!url || typeof url !== 'string') return null;
+    const s = url.trim();
     try {
-      const parsed = new URL(url);
-      const host = parsed.hostname.toLowerCase();
-      if (host !== 'youtube.com' && !host.endsWith('.youtube.com') && host !== 'youtu.be') return null;
+      const parsed = new URL(s.startsWith('http') ? s : 'https://' + s);
+      const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+      const validHosts = ['youtube.com', 'm.youtube.com', 'youtu.be', 'youtube-nocookie.com'];
+      if (!validHosts.includes(host)) return null;
+
+      let id = null;
       if (host === 'youtu.be') {
-        const id = parsed.pathname.replace(/^\/+/, '').split('/')[0];
-        return /^[\w-]{11}$/.test(id) ? id : null;
+        id = parsed.pathname.slice(1).split('/')[0];
+      } else if (parsed.pathname.startsWith('/embed/')) {
+        id = parsed.pathname.split('/')[2];
+      } else if (parsed.pathname.startsWith('/shorts/')) {
+        id = parsed.pathname.split('/')[2];
+      } else if (parsed.pathname.startsWith('/v/')) {
+        id = parsed.pathname.split('/')[2];
+      } else {
+        id = parsed.searchParams.get('v');
       }
-      if (parsed.pathname.startsWith('/embed/')) {
-        const id = parsed.pathname.split('/')[2];
-        return /^[\w-]{11}$/.test(id) ? id : null;
+
+      if (id && /^[\w-]{11}$/.test(id)) {
+        return id;
       }
-      const v = parsed.searchParams.get('v');
-      return (v && /^[\w-]{11}$/.test(v)) ? v : null;
     } catch (_) {}
-    return null;
+
+    const m = s.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+    return (m && /^[\w-]{11}$/.test(m[1])) ? m[1] : null;
   }
 
-  function isYoutubeUrl(url) {
-    return !!getYoutubeVideoId(url);
+  function isYoutubeUrl(val) {
+    if (!val || typeof val !== 'string') return false;
+    const v = val.trim();
+    if (!v.includes('youtube.com') && !v.includes('youtu.be') && !v.includes('youtube-nocookie.com')) return false;
+    return !!getYoutubeVideoId(v);
   }
 
-  function isAllowedVideoUrl(url) {
-    return isYoutubeUrl(url) || isDriveUrl(url);
+  const DRIVE_REGEX = /^https:\/\/(drive|docs)\.google\.com\/(file\/d\/|open\?id=|uc\?id=)[-\w]{25,}/;
+
+  function getDriveFileId(url) {
+    if (!url || typeof url !== 'string') return null;
+    const s = url.trim();
+    try {
+      const parsed = new URL(s.startsWith('http') ? s : 'https://' + s);
+      const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+      if (host !== 'drive.google.com' && host !== 'docs.google.com') return null;
+
+      const matchPath = parsed.pathname.match(/\/file\/d\/([-\w]{25,})/);
+      if (matchPath && matchPath[1]) return matchPath[1];
+
+      const idParam = parsed.searchParams.get('id');
+      if (idParam && /^([-\w]{25,})$/.test(idParam)) return idParam;
+    } catch (_) {}
+
+    const m = s.match(/google\.com\/(?:file\/d\/|open\?id=|uc\?id=)([-\w]{25,})/);
+    return (m && /^([-\w]{25,})$/.test(m[1])) ? m[1] : null;
   }
 
-  function normalizeVideoUrl(url) {
-    if (!url || typeof url !== 'string') return '';
-    const trimmed = url.trim();
-    const ytId = getYoutubeVideoId(trimmed);
+  function isDriveUrl(val) {
+    if (!val || typeof val !== 'string') return false;
+    const s = val.trim();
+    return DRIVE_REGEX.test(s) && !!getDriveFileId(s);
+  }
+
+  function isAllowedVideoUrl(val) {
+    return isYoutubeUrl(val) || isDriveUrl(val);
+  }
+
+  function normalizeVideoUrl(val) {
+    if (!val || typeof val !== 'string') return '';
+    const s = val.trim();
+    const ytId = getYoutubeVideoId(s);
     if (ytId) {
-      return `https://www.youtube-nocookie.com/embed/${ytId}`;
+      return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}`;
     }
-    const driveId = getDriveFileId(trimmed);
+    const driveId = getDriveFileId(s);
     if (driveId) {
-      return `https://drive.google.com/file/d/${driveId}/preview`;
+      return `https://drive.google.com/file/d/${encodeURIComponent(driveId)}/preview`;
     }
-    return trimmed;
+    return '';
   }
 
   return {
