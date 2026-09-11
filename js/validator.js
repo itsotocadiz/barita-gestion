@@ -106,6 +106,66 @@ const Validator = (() => {
     if (inputEl.value) handler();
   }
 
+  function getDriveFileId(url) {
+    if (!url || typeof url !== 'string') return null;
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.toLowerCase();
+      if (!host.endsWith('drive.google.com') && !host.endsWith('docs.google.com')) return null;
+      const pathMatch = parsed.pathname.match(/\/file\/d\/([-\w]{25,})/i);
+      if (pathMatch && pathMatch[1]) return pathMatch[1];
+      const idParam = parsed.searchParams.get('id');
+      if (idParam && /^[-\w]{25,}$/.test(idParam)) return idParam;
+    } catch (_) {}
+    return null;
+  }
+
+  function isDriveUrl(url) {
+    return !!getDriveFileId(url);
+  }
+
+  function getYoutubeVideoId(url) {
+    if (!url || typeof url !== 'string') return null;
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.toLowerCase();
+      if (host !== 'youtube.com' && !host.endsWith('.youtube.com') && host !== 'youtu.be') return null;
+      if (host === 'youtu.be') {
+        const id = parsed.pathname.replace(/^\/+/, '').split('/')[0];
+        return /^[\w-]{11}$/.test(id) ? id : null;
+      }
+      if (parsed.pathname.startsWith('/embed/')) {
+        const id = parsed.pathname.split('/')[2];
+        return /^[\w-]{11}$/.test(id) ? id : null;
+      }
+      const v = parsed.searchParams.get('v');
+      return (v && /^[\w-]{11}$/.test(v)) ? v : null;
+    } catch (_) {}
+    return null;
+  }
+
+  function isYoutubeUrl(url) {
+    return !!getYoutubeVideoId(url);
+  }
+
+  function isAllowedVideoUrl(url) {
+    return isYoutubeUrl(url) || isDriveUrl(url);
+  }
+
+  function normalizeVideoUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    const ytId = getYoutubeVideoId(trimmed);
+    if (ytId) {
+      return `https://www.youtube-nocookie.com/embed/${ytId}`;
+    }
+    const driveId = getDriveFileId(trimmed);
+    if (driveId) {
+      return `https://drive.google.com/file/d/${driveId}/preview`;
+    }
+    return trimmed;
+  }
+
   return {
     isValidRut,
     formatRutWithoutDots,
@@ -113,8 +173,19 @@ const Validator = (() => {
     isValidEmail,
     isValidString,
     stripHtml,
-    validatePersona
+    validatePersona,
+    isDriveUrl,
+    getDriveFileId,
+    isYoutubeUrl,
+    getYoutubeVideoId,
+    isAllowedVideoUrl,
+    normalizeVideoUrl
   };
 })();
 
-window.Validator = Validator;
+if (typeof window !== 'undefined') {
+  window.Validator = Validator;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Validator;
+}
