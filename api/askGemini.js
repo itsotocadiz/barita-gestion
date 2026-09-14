@@ -15,7 +15,7 @@ export default async function handler(req) {
     const corsHeaders = {
     'Access-Control-Allow-Origin': corsOrigin,
     'Access-Control-Allow-Methods': 'OPTIONS, POST',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Gemini-Key',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Vary': 'Origin'
   };
 

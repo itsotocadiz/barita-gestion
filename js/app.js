@@ -107,7 +107,8 @@ const App = {
       postulante: 'POSTULANTE'
     };
     const userEmail = (typeof Auth !== 'undefined' && Auth.currentUser ? Auth.currentUser.email : '').trim().toLowerCase();
-    const isRealSuperAdmin = userEmail === 'itsotocadiz@gmail.com' || (typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original'));
+    const isAllowlistSuperAdmin = !!(window.__BARITA_ENV__?.SUPERADMIN_ALLOWLIST || []).includes(userEmail);
+    const isRealSuperAdmin = isAllowlistSuperAdmin || (typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original'));
 
     let displayRole = roleLabels[rawRole.toLowerCase()] || rawRole.toUpperCase();
     if (isRealSuperAdmin && rawRole.toLowerCase() !== 'superadmin') {
@@ -472,7 +473,8 @@ const App = {
     let defaultView = '/dashboard';
     if (typeof Auth !== 'undefined' && Auth.currentUser) {
       const email = (Auth.currentUser.email || '').trim().toLowerCase();
-      if (email === 'itsotocadiz@gmail.com') {
+      const isSuperEmail = !!(window.__BARITA_ENV__?.SUPERADMIN_ALLOWLIST || []).includes(email) || Auth.currentRole === 'superadmin';
+      if (isSuperEmail) {
         defaultView = '/superadmin';
       }
     }
@@ -513,7 +515,7 @@ const App = {
     
     // Validacion sincrona preventiva por email por si el rol aun esta resolviendose asincronamente
     const userEmail = Auth.currentUser ? ((Auth.currentUser.email || Auth.currentUser.user_metadata?.email || '').trim().toLowerCase()) : '';
-    const isSuperEmail = userEmail === 'itsotocadiz@gmail.com';
+    const isSuperEmail = !!(window.__BARITA_ENV__?.SUPERADMIN_ALLOWLIST || []).includes(userEmail);
     const isSuperAdminReal = isSuperAdminNoImpersonate || (isSuperEmail && !isImpersonating);
 
     let shouldHideSidebar = view === 'superadmin' || 

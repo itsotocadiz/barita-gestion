@@ -573,7 +573,7 @@ const Auth = (() => {
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userSchool);
         const isBaritaTestUser = userEmail.includes('@barita.cl');
         if ((!userSchool || isUUID || (isBaritaTestUser && userSchool === 'terra_di_bimbi')) && state.currentRole !== 'superadmin' && state.currentRole !== 'postulante') {
-          userSchool = (userEmail.includes('terra') || userEmail.includes('italo') || userEmail.includes('itsotocadiz')) ? 'terra_di_bimbi' : 'demo';
+          userSchool = (userEmail.includes('terra') || userEmail.includes('italo')) ? 'terra_di_bimbi' : 'demo';
           data.colegio_id = userSchool;
           state.userProfile.colegio_id = userSchool;
           try {
@@ -596,7 +596,7 @@ const Auth = (() => {
           if (App.renderHeaderActions) App.renderHeaderActions();
         }
       } else {
-        const isSuper = userEmail === 'itsotocadiz@gmail.com';
+        const isSuper = state.currentRole === 'superadmin' || isDbSA || isEnvSA;
         const assignedName = isSuper ? 'Super Admin' : (state.currentUser.user_metadata?.full_name || 'Usuario');
         const defaultSchool = userEmail.includes('terra') ? 'terra_di_bimbi' : 'demo';
 

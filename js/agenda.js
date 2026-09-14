@@ -189,7 +189,9 @@ const AgendaView = (() => {
   function getCurrentUserEmail() {
     let email = (Auth.currentUser && Auth.currentUser.email) ? Auth.currentUser.email.trim().toLowerCase() : '';
     const activeRole = Auth.currentRole;
-    if (email === 'itsotocadiz@gmail.com' && activeRole && activeRole !== 'superadmin') {
+    const isImpersonating = (typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original')) ||
+      (!!(window.__BARITA_ENV__?.SUPERADMIN_ALLOWLIST || []).includes(email) && activeRole && activeRole !== 'superadmin');
+    if (isImpersonating && activeRole && activeRole !== 'superadmin') {
       const activeSchool = (typeof Storage !== 'undefined' && Storage.activeSchool) ? Storage.activeSchool : 'demo';
       const realUser = (Storage.getUsuarios ? Storage.getUsuarios() : [])
         .find(u => {
@@ -207,7 +209,9 @@ const AgendaView = (() => {
   function getCurrentUserUid() {
     let uid = Auth.currentUser ? Auth.currentUser.uid : 'demo';
     const email = getCurrentUserEmail();
-    if (Auth.currentUser && Auth.currentUser.email && Auth.currentUser.email.trim().toLowerCase() === 'itsotocadiz@gmail.com' && Auth.currentRole !== 'superadmin') {
+    const isImpersonating = (typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original')) ||
+      (Auth.currentUser?.email && !!(window.__BARITA_ENV__?.SUPERADMIN_ALLOWLIST || []).includes(Auth.currentUser.email.trim().toLowerCase()) && Auth.currentRole !== 'superadmin');
+    if (isImpersonating && Auth.currentRole !== 'superadmin') {
       const activeSchool = (typeof Storage !== 'undefined' && Storage.activeSchool) ? Storage.activeSchool : 'demo';
       const realUser = (Storage.getUsuarios ? Storage.getUsuarios() : [])
         .find(u => {
@@ -709,7 +713,9 @@ const AgendaView = (() => {
     const userProfile = Auth.userProfile || {};
     let organizadorNombre = (userProfile.nombres || userProfile.nombre) ? `${userProfile.nombres || userProfile.nombre} ${userProfile.apellidos || ''}` : Auth.currentUser.email;
     
-    if (Auth.currentUser && Auth.currentUser.email && Auth.currentUser.email.trim().toLowerCase() === 'itsotocadiz@gmail.com' && Auth.currentRole !== 'superadmin') {
+    const isImpersonating = (typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original')) ||
+      (Auth.currentUser?.email && !!(window.__BARITA_ENV__?.SUPERADMIN_ALLOWLIST || []).includes(Auth.currentUser.email.trim().toLowerCase()) && Auth.currentRole !== 'superadmin');
+    if (isImpersonating && Auth.currentRole !== 'superadmin') {
       const activeSchool = (typeof Storage !== 'undefined' && Storage.activeSchool) ? Storage.activeSchool : 'demo';
       const realUser = (Storage.getUsuarios ? Storage.getUsuarios() : [])
         .find(u => {
