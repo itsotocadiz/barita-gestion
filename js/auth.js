@@ -479,29 +479,9 @@ const Auth = (() => {
       const isImpSession = typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('superadmin_original');
       if (isImpSession) return;
       
-      // Optimizacion critica y prevencion de cuelgues asincronos
-      if (userEmail === 'itsotocadiz@gmail.com') {
-        state.currentRole = 'superadmin';
-        const currentHash = window.location.hash || '';
-        const pending = (state.pendingRole || localStorage.getItem('barita_pending_role') || '').toLowerCase();
-        const isPostulanteRoute = currentHash.startsWith('#/postulantes') || pending === 'postulante' || pending === 'directivo';
-        
-        if (isPostulanteRoute) {
-          if (!state.isLoggingOut) {
-            state._pendingTimeouts.push(setTimeout(() => {
-              if (!state.isLoggingOut) window.location.hash = '#/superadmin/postulaciones';
-            }, 10));
-          }
-        } else if (currentHash === '' || currentHash === '#/' || currentHash === '#/dashboard') {
-          if (!state.isLoggingOut) {
-            state._pendingTimeouts.push(setTimeout(() => {
-              if (!state.isLoggingOut) window.location.hash = '#/superadmin';
-            }, 10));
-          }
-        }
-        return;
-      }
-
+      // FIX DB-First: eliminado hardcode superadmin por email (BACKDOOR). Fuente de verdad = DB is_superadmin.
+      // Fallback ENV deploy: window.__BARITA_ENV__?.SUPERADMIN_ALLOWLIST?.includes(userEmail)
+      const isEnvSA = !!(window.__BARITA_ENV__?.SUPERADMIN_ALLOWLIST?.includes(userEmail));
       const currentHash = window.location.hash || '';
       
       // Si no estamos en una ruta de postulaciones, forzar limpieza de pending
@@ -543,15 +523,13 @@ const Auth = (() => {
 
       if (data && data.role) {
         state._activeClient = clientGestion;
-        if (userEmail !== 'itsotocadiz@gmail.com') {
-          localStorage.removeItem('barita_pending_role');
-          state.pendingRole = null;
-        }
+        localStorage.removeItem('barita_pending_role');
+        state.pendingRole = null;
       }
 
       // 3. Role resolution — database-driven, school-agnostic
-      // Superadmin hardcode solo si no está viendo como postulante/directivo (misma cuenta superadmin puede ver todo)
-      if (userEmail === 'itsotocadiz@gmail.com') {
+      const isDbSA = data && (data.is_superadmin === true || data.is_superadmin === 'true' || data.role === 'superadmin');
+      if (isDbSA || isEnvSA) {
         state.currentRole = 'superadmin';
         if (isPostulanteRoute) {
           setTimeout(() => {
@@ -562,21 +540,16 @@ const Auth = (() => {
             window.location.hash = '#/superadmin';
           }, 10);
         }
-      } else if (data && (data.role || data.is_superadmin)) {
-        if (data.is_superadmin === true || data.is_superadmin === 'true') {
-          state.currentRole = 'superadmin';
-          state.isSuperAdmin = true;
-        } else {
-          let r = (data.role || '').toString().trim().toLowerCase();
-          if (r === 'director') r = 'directora';
-          if (r === 'direccion' || r === 'dirección') r = 'directora';
-          if (r === 'finanza') r = 'finanzas';
-          if (r === 'administrador' || r === 'administrator') r = 'admin';
-          if (r.includes('convivencia')) r = 'convivencia';
-          // PIE may come as 'pie' or 'PIE'
-          if (r.toLowerCase() === 'pie') r = 'PIE';
-          state.currentRole = r;
-        }
+      } else if (data && data.role) {
+        let r = (data.role || '').toString().trim().toLowerCase();
+        if (r === 'director') r = 'directora';
+        if (r === 'direccion' || r === 'dirección') r = 'directora';
+        if (r === 'finanza') r = 'finanzas';
+        if (r === 'administrador' || r === 'administrator') r = 'admin';
+        if (r.includes('convivencia')) r = 'convivencia';
+        // PIE may come as 'pie' or 'PIE'
+        if (r.toLowerCase() === 'pie') r = 'PIE';
+        state.currentRole = r;
       } else if (state.currentUser.user_metadata && state.currentUser.user_metadata.role) {
         let r = state.currentUser.user_metadata.role.toString().trim().toLowerCase();
         if (r === 'director') r = 'directora';
@@ -604,7 +577,7 @@ const Auth = (() => {
           data.colegio_id = userSchool;
           state.userProfile.colegio_id = userSchool;
           try {
-            await client.from('usuarios').update({ colegio_id: userSchool }).eq('id', uid);
+            await clientGestion.from('usuarios').update({ colegio_id: userSchool }).eq('id', uid);
           } catch(_err) {}
         }
 
@@ -653,7 +626,7 @@ const Auth = (() => {
 
         if (state.currentRole !== 'postulante') {
           try {
-            await client.from('usuarios').upsert([{
+            await clientGestion.from('usuarios').upsert([{
               id: uid,
               email: userEmail || state.currentUser.email,
               role: state.currentRole,

@@ -133,7 +133,8 @@ const Storage = {
 
   loadLocalMutations() {
     try {
-      const stored = localStorage.getItem('barita_local_mutations');
+      const schoolKey = (this.activeSchool || 'demo').toString().trim();
+      const stored = localStorage.getItem(`barita_local_mutations_${schoolKey}`) || localStorage.getItem('barita_local_mutations');
       if (stored) {
         this.localMutations = JSON.parse(stored);
       }
@@ -149,7 +150,8 @@ const Storage = {
       if (clone.estudiantes) {
         Object.values(clone.estudiantes).forEach(e => { if (e) delete e.rut; delete e.rut_completo; });
       }
-      localStorage.setItem('barita_local_mutations', JSON.stringify(clone));
+      const schoolKey = (this.activeSchool || 'demo').toString().trim();
+      localStorage.setItem(`barita_local_mutations_${schoolKey}`, JSON.stringify(clone));
     } catch (e) {
       console.warn('Error saving local mutations', e);
     }

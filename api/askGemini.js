@@ -68,10 +68,9 @@ export default async function handler(req) {
       });
     }
 
-    const tempKey = req.headers.get('x-gemini-key') || '';
-    const apiKey = process.env.GEMINI_API_KEY || tempKey;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'Server misconfiguration: API key missing. Configura GEMINI_API_KEY en Vercel Env o pega una temporal en Panel de Control.' }), { 
+      return new Response(JSON.stringify({ error: 'Server misconfiguration: GEMINI_API_KEY missing en variables de entorno del servidor.' }), { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

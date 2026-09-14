@@ -54,9 +54,6 @@ Si la consulta del usuario es muy abierta, breve o puede interpretarse de distin
         if (!token && typeof Auth.currentUser.getIdToken === 'function') token = await Auth.currentUser.getIdToken();
       } catch (_e) {}
     }
-    // Fallback para pruebas: si el proxy aún no tiene GEMINI_API_KEY en Env, usa la temporal de sessionStorage
-    const tempKey = (() => { try { return sessionStorage.getItem('barita_gemini_key_temp') || ''; } catch (_e) { return ''; } })();
-
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     let timeoutId = null;
     if (controller) timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -65,8 +62,6 @@ Si la consulta del usuario es muy abierta, breve o puede interpretarse de distin
       const combinedPrompt = `${effectiveSystemPrompt}\n\n[CONSULTA DEL USUARIO]:\n${userPrompt}`;
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      // Si el Env del servidor aún no tiene key, envía la temporal como fallback X-Gemini-Key (el proxy la usará si existe)
-      if (tempKey) headers['X-Gemini-Key'] = tempKey;
 
       const response = await fetch(API_URL, {
         method: 'POST',
